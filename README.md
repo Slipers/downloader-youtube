@@ -60,10 +60,10 @@ Le dossier `extension/` contient une extension Chromium (Chrome, Edge, Brave, Op
 
 L'app vérifie au démarrage si une nouvelle version est publiée (`backend/updater.py`) et propose un bouton **Mettre à jour** avec téléchargement + installation + redémarrage automatiques, sans repasser par l'installeur.
 
-- **Configuration** : dans `backend/updater.py`, remplacez `UPDATE_REPO = "OWNER/REPO"` par votre dépôt GitHub (ex. `"pasca/downloader-youtube"`). Tant que ce n'est pas fait, la vérification est silencieusement désactivée (aucune erreur affichée).
+- **Configuration** : `UPDATE_REPO` dans `backend/updater.py` pointe vers [Slipers/downloader-youtube](https://github.com/Slipers/downloader-youtube). Les releases y sont publiées avec des tags courts (`v1.11`, `v1.12`, …) plutôt qu'un semver complet.
 - **Publier une mise à jour** :
-  1. Montez `APP_VERSION` dans `backend/updater.py` (et `APP_VERSION` dans `installer/installer.py` pour cohérence).
+  1. Montez `APP_VERSION` dans `backend/updater.py` (et `APP_VERSION` dans `installer/installer.py` pour cohérence), ex. `"1.12"`.
   2. Reconstruisez (`pyinstaller app.py ...` comme ci-dessus).
-  3. Créez une *release* GitHub avec un tag `vX.Y.Z` correspondant, et joignez-y un zip du dossier `dist/DownloaderYoutube` nommé `*-update.zip` (ex. `python -c "import shutil; shutil.make_archive('DownloaderYoutube-vX.Y.Z-update', 'zip', 'dist/DownloaderYoutube')"`). Vous pouvez aussi y joindre `DownloaderYoutubeSetup.exe` pour les installations neuves.
+  3. Créez une *release* GitHub avec le tag correspondant (`gh release create v1.12 ...`), et joignez-y un zip du dossier `dist/DownloaderYoutube` nommé `*-update.zip` (ex. `python -c "import shutil; shutil.make_archive('DownloaderYoutube-v1.12-update', 'zip', 'dist/DownloaderYoutube')"`). Joignez aussi `DownloaderYoutubeSetup.exe` pour les installations neuves.
   4. Au prochain lancement, l'app détecte le tag plus récent, télécharge ce zip, remplace les fichiers en place et relance — le tout piloté par un petit script généré à la volée qui attend la fermeture du processus avant de copier (impossible d'écraser son propre .exe en cours d'exécution sous Windows).
 - **Extension** : sa version suit celle de l'app (elle est embarquée dans le build). Si la copie déjà chargée dans un navigateur est plus ancienne que celle livrée avec l'app installée, un bandeau « Mettre à jour » apparaît dans Paramètres → Extension navigateur.
