@@ -24,13 +24,23 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.18"
+APP_VERSION = "1.19"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.19",
+        "date": "11 août 2026",
+        "bullets": [
+            "Remplacement du système de notation obligatoire toutes les 2 minutes par un bouton « Donner mon avis » en bas des paramètres, mis en avant après un téléchargement si aucun avis n'a été donné depuis un mois.",
+            "Correction du panneau « Nouveautés », devenu illisible avec l'accumulation des versions : il défile maintenant correctement au lieu de rétrécir le texte.",
+            "Nouveau toggle « Toujours confirmer la vidéo » directement dans les paramètres, en plus de celui déjà présent sur l'écran de confirmation.",
+            "Quand la confirmation vidéo est désactivée, l'écran de confirmation n'apparaît plus du tout — passage direct aux réglages de téléchargement.",
+        ],
+    },
     {
         "version": "1.18",
         "date": "11 août 2026",

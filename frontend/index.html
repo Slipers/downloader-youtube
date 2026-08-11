@@ -23,6 +23,7 @@
     </button>
     <button id="settings-toggle" class="icon-btn" aria-label="Paramètres" title="Paramètres">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <span id="settings-badge" class="icon-btn-badge" hidden></span>
     </button>
     <button id="theme-toggle" class="icon-btn" aria-label="Basculer le thème jour/nuit" title="Basculer le thème">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>
@@ -328,6 +329,13 @@
       </div>
       <div class="settings-row">
         <div class="settings-row-text">
+          <p class="settings-row-title">Toujours confirmer la vidéo</p>
+          <p class="hint-text">Affiche un écran de confirmation avant de passer aux réglages de téléchargement.</p>
+        </div>
+        <button id="toggle-always-confirm-settings" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-text">
           <p class="settings-row-title">Durée des confettis</p>
           <p class="hint-text">Durée de l'animation de confettis à la fin du téléchargement.</p>
         </div>
@@ -355,6 +363,17 @@
         </div>
         <div class="browser-list" id="browser-list"></div>
       </div>
+
+      <button id="btn-rate-app" class="rate-app-btn" type="button">
+        <span class="rate-app-btn-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          <span id="rate-app-badge" class="icon-btn-badge" hidden></span>
+        </span>
+        <span class="rate-app-btn-text">
+          <span class="rate-app-btn-title">Donner mon avis</span>
+          <span class="hint-text">Notez l'application et dites-nous ce que vous en pensez.</span>
+        </span>
+      </button>
 
       <div class="modal-actions">
         <button id="settings-close" class="btn-secondary btn-full">Fermer</button>
@@ -414,6 +433,9 @@
   <!-- Modal : notation (obligatoire, sans bouton pour fermer) -->
   <div id="modal-rating" class="modal-overlay">
     <div class="modal">
+      <button type="button" id="rating-dismiss" class="modal-corner-btn" aria-label="Fermer" title="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
       <div id="rating-step-stars">
         <span class="update-badge">Votre avis compte</span>
         <h3>Que pensez-vous de Downloader Youtube ?</h3>

@@ -56,7 +56,7 @@ class Api:
         allowed = {
             "show_preview", "last_quality", "last_fps", "last_export_type",
             "last_output_format", "confetti_seconds", "last_seen_version",
-            "sfx_enabled", "always_confirm_video", "rated_version",
+            "sfx_enabled", "always_confirm_video",
         }
         if key in allowed:
             config.save_settings({key: value})
@@ -65,7 +65,7 @@ class Api:
     def submit_rating(self, stars: float, comment: str):
         ok = feedback.send_rating(stars, (comment or "").strip())
         if ok:
-            config.save_settings({"rated_version": updater.APP_VERSION})
+            config.save_settings({"last_rating_at": time.time()})
         return {"ok": ok}
 
     # ---- folder picker (native) -------------------------------------------

@@ -162,6 +162,18 @@ function initTheme(savedTheme) {
 }
 
 /* ---------- settings modal ---------- */
+// Two toggles control this same preference (a subtle one on the confirm
+// screen itself, a normal one in Settings) -- this keeps both in sync
+// regardless of which one the user actually clicks.
+function setAlwaysConfirmVideo(value) {
+  state.alwaysConfirmVideo = value;
+  [$("toggle-always-confirm"), $("toggle-always-confirm-settings")].forEach((toggle) => {
+    toggle.classList.toggle("on", value);
+    toggle.setAttribute("aria-checked", String(value));
+  });
+  Api.savePreference("always_confirm_video", value);
+}
+
 function initSettingsModal() {
   $("settings-toggle").addEventListener("click", () => openModal("modal-settings"));
   $("settings-close").addEventListener("click", () => closeModal("modal-settings"));
@@ -180,6 +192,10 @@ function initSettingsModal() {
     sfxToggle.classList.toggle("on", state.sfxEnabled);
     sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
     Api.savePreference("sfx_enabled", state.sfxEnabled);
+  });
+
+  $("toggle-always-confirm-settings").addEventListener("click", () => {
+    setAlwaysConfirmVideo(!state.alwaysConfirmVideo);
   });
 
   const confettiInput = $("confetti-seconds-input");
@@ -393,7 +409,6 @@ async function openChangelogModal() {
       list.appendChild(item);
     });
     changelogLoaded = true;
-    fitModalToViewport("modal-changelog");
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
 }
 
@@ -499,8 +514,8 @@ async function checkWelcomeMessage() {
   }
 }
 
-/* ---------- mandatory post-update rating ---------- */
-const RATING_DELAY_MS = 2 * 60 * 1000;
+/* ---------- rating / feedback ---------- */
+const RATING_STALE_DAYS = 30;
 const RATING_MIN_CHARS = 100;
 let ratingSelectedStars = 0;
 
@@ -555,7 +570,11 @@ function initRatingModal() {
     const originalLabel = submitBtn.textContent;
     submitBtn.textContent = "Envoi…";
     try {
-      await Api.submitRating(ratingSelectedStars, commentInput.value.trim());
+      const result = await Api.submitRating(ratingSelectedStars, commentInput.value.trim());
+      if (result.ok) {
+        state.settings.last_rating_at = Date.now() / 1000;
+        updateRatingBadge();
+      }
     } catch (err) { /* the modal still closes -- nothing more the user can do about a failed send */ }
     submitBtn.textContent = originalLabel;
     $("rating-step-comment").hidden = true;
@@ -564,6 +583,11 @@ function initRatingModal() {
   });
 
   $("rating-close").addEventListener("click", () => closeModal("modal-rating"));
+  $("rating-dismiss").addEventListener("click", () => closeModal("modal-rating"));
+  $("btn-rate-app").addEventListener("click", () => {
+    closeModal("modal-settings");
+    openRatingModal();
+  });
 }
 
 function openRatingModal() {
@@ -581,11 +605,17 @@ function openRatingModal() {
   openModal("modal-rating");
 }
 
-function startRatingFlowIfDue() {
-  const appVersion = state.appVersion;
-  const ratedVersion = state.settings.rated_version;
-  if (!appVersion || ratedVersion === appVersion) return;
-  setTimeout(openRatingModal, RATING_DELAY_MS);
+function isRatingOverdue() {
+  const lastRatingAt = state.settings.last_rating_at;
+  if (!lastRatingAt) return true;
+  const daysSince = (Date.now() / 1000 - lastRatingAt) / 86400;
+  return daysSince >= RATING_STALE_DAYS;
+}
+
+function updateRatingBadge() {
+  const due = isRatingOverdue();
+  $("settings-badge").hidden = !due;
+  $("rate-app-badge").hidden = !due;
 }
 
 /* ---------- start -> url ---------- */
@@ -647,7 +677,11 @@ function initUrlScreen() {
   nextBtn.addEventListener("click", () => {
     state.url = input.value.trim();
     state.viaExtension = false;
-    openConfirmModal(state.url, { autoConfirm: !state.alwaysConfirmVideo });
+    if (state.alwaysConfirmVideo) {
+      openConfirmModal(state.url);
+    } else {
+      skipConfirmAndProceed(state.url, nextBtn);
+    }
   });
 
   $("btn-paste").addEventListener("click", async () => {
@@ -738,17 +772,43 @@ function proceedToOptions() {
   }, 360);
 }
 
+async function skipConfirmAndProceed(url, nextBtn) {
+  // "Toujours confirmer la vidéo" is off: no modal flash at all, straight
+  // to the options screen the instant the real fetch resolves.
+  nextBtn.disabled = true;
+  nextBtn.classList.add("loading");
+  let result;
+  try {
+    result = await Api.fetchVideoInfo(url);
+  } catch (err) {
+    result = { ok: false, error: "Une erreur est survenue." };
+  }
+  nextBtn.classList.remove("loading");
+  nextBtn.disabled = false;
+
+  if (!result.ok) {
+    $("url-error").hidden = false;
+    $("url-error").textContent = result.error;
+    return;
+  }
+
+  state.videoInfo = result.data;
+  populateOptionsScreen();
+  showScreen("screen-options");
+  const card = $("options-card");
+  card.classList.remove("flip-in-playing");
+  void card.offsetWidth; // restart animation
+  card.classList.add("flip-in-playing");
+  card.addEventListener("animationend", () => card.classList.remove("flip-in-playing"), { once: true });
+}
+
 function initConfirmModal() {
   $("modal-cancel").addEventListener("click", () => closeModal("modal-confirm"));
   $("modal-error-back").addEventListener("click", () => closeModal("modal-confirm"));
   $("modal-confirm-btn").addEventListener("click", proceedToOptions);
 
-  const alwaysConfirmToggle = $("toggle-always-confirm");
-  alwaysConfirmToggle.addEventListener("click", () => {
-    state.alwaysConfirmVideo = !state.alwaysConfirmVideo;
-    alwaysConfirmToggle.classList.toggle("on", state.alwaysConfirmVideo);
-    alwaysConfirmToggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
-    Api.savePreference("always_confirm_video", state.alwaysConfirmVideo);
+  $("toggle-always-confirm").addEventListener("click", () => {
+    setAlwaysConfirmVideo(!state.alwaysConfirmVideo);
   });
 }
 
@@ -1411,6 +1471,7 @@ function showResult(kind, title, text, filepath) {
     icon.innerHTML = CHECK_ICON;
     runConfetti(state.confettiSeconds);
     if (state.sfxEnabled) playDownloadCompleteSfx();
+    updateRatingBadge();
   } else {
     icon.textContent = kind === "cancelled" ? "!" : "✕";
   }
@@ -1646,9 +1707,11 @@ async function init() {
   const sfxToggle = $("toggle-sfx");
   sfxToggle.classList.toggle("on", state.sfxEnabled);
   sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
-  const alwaysConfirmToggle = $("toggle-always-confirm");
-  alwaysConfirmToggle.classList.toggle("on", state.alwaysConfirmVideo);
-  alwaysConfirmToggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
+  [$("toggle-always-confirm"), $("toggle-always-confirm-settings")].forEach((toggle) => {
+    toggle.classList.toggle("on", state.alwaysConfirmVideo);
+    toggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
+  });
+  updateRatingBadge();
 
   initTheme(settings.theme);
 
@@ -1673,7 +1736,6 @@ async function init() {
   setSplashProgress(100);
 
   hideSplashScreen();
-  startRatingFlowIfDue();
 }
 
 document.addEventListener("DOMContentLoaded", init);

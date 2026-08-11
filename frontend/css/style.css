@@ -174,6 +174,7 @@ body {
   gap: 10px;
 }
 .icon-btn {
+  position: relative;
   width: 46px;
   height: 46px;
   border-radius: 50%;
@@ -188,6 +189,15 @@ body {
   transition: transform .25s var(--ease), background .3s, border-color .3s;
 }
 .icon-btn:hover { transform: scale(1.08) rotate(-8deg); border-color: var(--accent-2); }
+.icon-btn-badge {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  border: 2px solid var(--bg-0);
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
 .icon-btn svg { width: 20px; height: 20px; position: relative; transition: opacity .35s var(--ease), transform .5s var(--ease); }
 #theme-toggle svg { position: absolute; }
 #theme-toggle .icon-moon { opacity: 0; transform: rotate(90deg) scale(.6); }
@@ -336,6 +346,8 @@ body {
 .btn-arrow svg { width: 20px; height: 20px; }
 .btn-arrow:hover:not(:disabled) { transform: scale(1.08); }
 .btn-arrow:disabled { opacity: .35; cursor: not-allowed; }
+.btn-arrow.loading { opacity: .7; }
+.btn-arrow.loading svg { animation: spin .8s linear infinite; }
 
 .screen-header {
   display: flex;
@@ -970,6 +982,38 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .settings-row .hint-text { margin: 0; }
 .settings-block { margin-bottom: clamp(8px, 1.4vh, 18px); }
 .settings-block-hint { margin: 2px 0 clamp(4px, 0.8vh, 8px); }
+
+.rate-app-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-bottom: clamp(10px, 2vh, 18px);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-0);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .2s var(--ease);
+}
+.rate-app-btn:hover { border-color: var(--accent-2); background: var(--bg-1); transform: translateY(-1px); }
+.rate-app-btn-icon {
+  position: relative;
+  flex: none;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.rate-app-btn-icon svg { width: 18px; height: 18px; }
+.rate-app-btn-icon .icon-btn-badge { top: -2px; right: -2px; }
+.rate-app-btn-text { display: flex; flex-direction: column; gap: 2px; }
+.rate-app-btn-title { font-size: 13.5px; font-weight: 650; }
+.rate-app-btn .hint-text { margin: 0; }
 .settings-number { display: flex; align-items: center; gap: 6px; color: var(--text-1); font-size: 13px; font-weight: 600; }
 .settings-number input[type="number"] {
   width: 56px; text-align: center;
@@ -1239,9 +1283,34 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .modal-corner-btn ~ h3, .modal-corner-btn ~ .update-badge { padding-right: 40px; }
 
 /* ---------- Changelog ---------- */
-.changelog-modal { max-width: 460px; }
-.changelog-modal h3 { padding-right: 40px; }
-.changelog-list { display: flex; flex-direction: column; margin-top: 8px; }
+/* The changelog only ever grows (a new entry every release), so unlike
+   other modals it can't rely on shrinking-to-fit -- past a certain length
+   that either bottoms out at an illegible minimum scale or, worse, fights
+   with the user's own browser zoom. It gets a real internal scroll region
+   instead: fixed header, scrolling list. */
+.changelog-modal {
+  max-width: 460px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+.changelog-modal h3 { padding-right: 40px; flex: none; }
+#changelog-installed-version { flex: none; }
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  padding-right: 6px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.changelog-list::-webkit-scrollbar { width: 8px; }
+.changelog-list::-webkit-scrollbar-track { background: transparent; }
+.changelog-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.changelog-list::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
 .changelog-entry { display: flex; gap: 14px; }
 .changelog-entry-marker {
   position: relative;

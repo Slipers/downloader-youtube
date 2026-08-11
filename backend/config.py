@@ -33,7 +33,7 @@ DEFAULTS = {
     "last_seen_version": None,
     "sfx_enabled": True,
     "always_confirm_video": True,
-    "rated_version": None,
+    "last_rating_at": None,
 }
 
 
