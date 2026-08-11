@@ -24,13 +24,21 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.16"
+APP_VERSION = "1.17"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.17",
+        "date": "11 août 2026",
+        "bullets": [
+            "Son de démarrage plus long et plus riche (arpège en accord avec réverbération) au lieu de deux notes simples.",
+            "Le son de démarrage se déclenche désormais de façon fiable même si le navigateur bloque la lecture automatique — il joue dès la première interaction si besoin.",
+        ],
+    },
     {
         "version": "1.16",
         "date": "11 août 2026",

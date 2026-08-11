@@ -1350,36 +1350,107 @@ function showResult(kind, title, text, filepath) {
 }
 
 /* ---------- startup splash ---------- */
+function createReverbImpulse(ctx, duration = 1.6, decay = 2.4) {
+  const rate = ctx.sampleRate;
+  const length = Math.floor(rate * duration);
+  const impulse = ctx.createBuffer(2, length, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return impulse;
+}
+
+function renderStartupChime(ctx) {
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 1;
+  master.connect(ctx.destination);
+
+  // Reverb send: gives the tail a sense of space instead of stopping dead
+  // the instant each note's envelope ends, which is most of what makes this
+  // read as "one longer sound" rather than a handful of separate beeps.
+  const convolver = ctx.createConvolver();
+  convolver.buffer = createReverbImpulse(ctx);
+  const wetGain = ctx.createGain();
+  wetGain.gain.value = 0.35;
+  convolver.connect(wetGain).connect(master);
+
+  const dryGain = ctx.createGain();
+  dryGain.connect(master);
+  dryGain.connect(convolver);
+
+  // Ascending arpeggio (C4-E4-G4-C5) that builds into a held chord rather
+  // than firing as separate notes.
+  [
+    { freq: 261.63, start: 0.0, dur: 1.6, gain: 0.11 },
+    { freq: 329.63, start: 0.14, dur: 1.5, gain: 0.11 },
+    { freq: 392.0, start: 0.28, dur: 1.4, gain: 0.12 },
+    { freq: 523.25, start: 0.42, dur: 1.3, gain: 0.14 },
+  ].forEach(({ freq, start, dur, gain }) => {
+    // Warm sine fundamental.
+    const osc1 = ctx.createOscillator();
+    osc1.type = "sine";
+    osc1.frequency.value = freq;
+    const g1 = ctx.createGain();
+    g1.gain.setValueAtTime(0.0001, now + start);
+    g1.gain.linearRampToValueAtTime(gain, now + start + 0.08);
+    g1.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+    osc1.connect(g1).connect(dryGain);
+    osc1.start(now + start);
+    osc1.stop(now + start + dur + 0.1);
+
+    // Quieter octave-up triangle layer for a bit of texture/brightness.
+    const osc2 = ctx.createOscillator();
+    osc2.type = "triangle";
+    osc2.frequency.value = freq * 2;
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0.0001, now + start);
+    g2.gain.linearRampToValueAtTime(gain * 0.28, now + start + 0.08);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + start + dur * 0.8);
+    osc2.connect(g2).connect(dryGain);
+    osc2.start(now + start);
+    osc2.stop(now + start + dur + 0.1);
+  });
+}
+
 function playStartupChime() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-    // A short two-note chime (not any existing brand's jingle) -- rises from
-    // G4 to D5 with a soft attack/decay envelope on each note.
-    [
-      { freq: 392.0, start: 0, dur: 0.3, gain: 0.14 },
-      { freq: 587.33, start: 0.24, dur: 0.6, gain: 0.18 },
-    ].forEach(({ freq, start, dur, gain }) => {
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gainNode.gain.setValueAtTime(0.0001, now + start);
-      gainNode.gain.linearRampToValueAtTime(gain, now + start + 0.03);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
-      osc.connect(gainNode).connect(ctx.destination);
-      osc.start(now + start);
-      osc.stop(now + start + dur + 0.05);
-    });
+    let played = false;
+    const start = () => {
+      if (played) return;
+      played = true;
+      renderStartupChime(ctx);
+    };
+
+    if (ctx.state === "running") {
+      start();
+      return;
+    }
+    // Autoplay is blocked until a user gesture in some environments --
+    // try resuming right away (harmless if ignored), and otherwise fall
+    // back to the first click/keypress so the chime still lands right as
+    // the app becomes interactive instead of never playing at all.
+    ctx.resume().then(() => { if (ctx.state === "running") start(); }).catch(() => {});
+    const onFirstGesture = () => {
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("keydown", onFirstGesture);
+      ctx.resume().finally(start);
+    };
+    document.addEventListener("pointerdown", onFirstGesture, { once: true });
+    document.addEventListener("keydown", onFirstGesture, { once: true });
   } catch (err) { /* Web Audio unavailable -- a missing chime is harmless */ }
 }
 
 function runSplashScreen() {
   playStartupChime();
   const fill = $("splash-progress-fill");
-  const DURATION_MS = 1900;
+  const DURATION_MS = 2400;
   const startedAt = performance.now();
   return new Promise((resolve) => {
     function tick(now) {
