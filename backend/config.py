@@ -31,6 +31,9 @@ DEFAULTS = {
     "pairing_token": None,
     "total_downloads": 0,
     "last_seen_version": None,
+    "sfx_enabled": True,
+    "always_confirm_video": True,
+    "rated_version": None,
 }
 
 

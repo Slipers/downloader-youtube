@@ -24,13 +24,24 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.17"
+APP_VERSION = "1.18"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.18",
+        "date": "11 août 2026",
+        "bullets": [
+            "Le son de démarrage se joue désormais dès la fin du chargement, sans avoir besoin de cliquer d'abord.",
+            "Nouveau son de fin de téléchargement, avec un réglage pour désactiver tous les effets sonores.",
+            "Nouvelle option « Toujours confirmer si il s'agit bien de la vidéo », discrète en bas de l'écran de confirmation.",
+            "L'écran de chargement au démarrage reflète maintenant le vrai avancement au lieu d'une animation minutée.",
+            "Nouveau système de notation : après une mise à jour et 2 minutes d'utilisation, un avis (note + commentaire) est demandé.",
+        ],
+    },
     {
         "version": "1.17",
         "date": "11 août 2026",

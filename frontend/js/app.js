@@ -174,6 +174,14 @@ function initSettingsModal() {
     Api.savePreference("show_preview", state.showPreview);
   });
 
+  const sfxToggle = $("toggle-sfx");
+  sfxToggle.addEventListener("click", () => {
+    state.sfxEnabled = !state.sfxEnabled;
+    sfxToggle.classList.toggle("on", state.sfxEnabled);
+    sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
+    Api.savePreference("sfx_enabled", state.sfxEnabled);
+  });
+
   const confettiInput = $("confetti-seconds-input");
   confettiInput.addEventListener("change", () => {
     const value = Math.max(1, Math.min(30, Number(confettiInput.value) || 5));
@@ -477,6 +485,7 @@ async function checkWelcomeMessage() {
   } catch (err) {
     return;
   }
+  state.appVersion = appVersion;
   const lastSeen = state.settings.last_seen_version;
   // Only announce on the launch right after an update -- a brand new
   // install has no "previous version" to welcome back from, so lastSeen
@@ -488,6 +497,95 @@ async function checkWelcomeMessage() {
   if (lastSeen !== appVersion) {
     Api.savePreference("last_seen_version", appVersion);
   }
+}
+
+/* ---------- mandatory post-update rating ---------- */
+const RATING_DELAY_MS = 2 * 60 * 1000;
+const RATING_MIN_CHARS = 100;
+let ratingSelectedStars = 0;
+
+function updateStarDisplay(rating) {
+  document.querySelectorAll("#star-rating .star-btn").forEach((btn) => {
+    const starIndex = Number(btn.dataset.star);
+    let fill = 0;
+    if (rating >= starIndex) fill = 100;
+    else if (rating >= starIndex - 0.5) fill = 50;
+    btn.style.setProperty("--fill", `${fill}%`);
+  });
+}
+
+function starsFromPointer(e, btn) {
+  const rect = btn.getBoundingClientRect();
+  const starIndex = Number(btn.dataset.star);
+  const isLeftHalf = e.clientX - rect.left < rect.width / 2;
+  return isLeftHalf ? starIndex - 0.5 : starIndex;
+}
+
+function initRatingModal() {
+  document.querySelectorAll("#star-rating .star-btn").forEach((btn) => {
+    btn.addEventListener("mousemove", (e) => updateStarDisplay(starsFromPointer(e, btn)));
+    btn.addEventListener("mouseleave", () => updateStarDisplay(ratingSelectedStars));
+    btn.addEventListener("click", (e) => {
+      ratingSelectedStars = starsFromPointer(e, btn);
+      updateStarDisplay(ratingSelectedStars);
+      $("star-rating-value").textContent = `${ratingSelectedStars} / 5`;
+      $("rating-continue").disabled = ratingSelectedStars <= 0;
+    });
+  });
+
+  $("rating-continue").addEventListener("click", () => {
+    $("rating-step-stars").hidden = true;
+    $("rating-step-comment").hidden = false;
+    fitModalToViewport("modal-rating");
+    $("rating-comment").focus();
+  });
+
+  const commentInput = $("rating-comment");
+  const charCount = $("rating-char-count");
+  const submitBtn = $("rating-submit");
+  commentInput.addEventListener("input", () => {
+    const len = commentInput.value.trim().length;
+    charCount.textContent = `${len} / ${RATING_MIN_CHARS}`;
+    charCount.classList.toggle("ok", len >= RATING_MIN_CHARS);
+    submitBtn.disabled = len < RATING_MIN_CHARS;
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = "Envoi…";
+    try {
+      await Api.submitRating(ratingSelectedStars, commentInput.value.trim());
+    } catch (err) { /* the modal still closes -- nothing more the user can do about a failed send */ }
+    submitBtn.textContent = originalLabel;
+    $("rating-step-comment").hidden = true;
+    $("rating-step-done").hidden = false;
+    fitModalToViewport("modal-rating");
+  });
+
+  $("rating-close").addEventListener("click", () => closeModal("modal-rating"));
+}
+
+function openRatingModal() {
+  ratingSelectedStars = 0;
+  $("rating-step-stars").hidden = false;
+  $("rating-step-comment").hidden = true;
+  $("rating-step-done").hidden = true;
+  updateStarDisplay(0);
+  $("star-rating-value").textContent = "Survolez pour noter";
+  $("rating-continue").disabled = true;
+  $("rating-comment").value = "";
+  $("rating-char-count").textContent = `0 / ${RATING_MIN_CHARS}`;
+  $("rating-char-count").classList.remove("ok");
+  $("rating-submit").disabled = true;
+  openModal("modal-rating");
+}
+
+function startRatingFlowIfDue() {
+  const appVersion = state.appVersion;
+  const ratedVersion = state.settings.rated_version;
+  if (!appVersion || ratedVersion === appVersion) return;
+  setTimeout(openRatingModal, RATING_DELAY_MS);
 }
 
 /* ---------- start -> url ---------- */
@@ -549,7 +647,7 @@ function initUrlScreen() {
   nextBtn.addEventListener("click", () => {
     state.url = input.value.trim();
     state.viaExtension = false;
-    openConfirmModal(state.url);
+    openConfirmModal(state.url, { autoConfirm: !state.alwaysConfirmVideo });
   });
 
   $("btn-paste").addEventListener("click", async () => {
@@ -644,6 +742,14 @@ function initConfirmModal() {
   $("modal-cancel").addEventListener("click", () => closeModal("modal-confirm"));
   $("modal-error-back").addEventListener("click", () => closeModal("modal-confirm"));
   $("modal-confirm-btn").addEventListener("click", proceedToOptions);
+
+  const alwaysConfirmToggle = $("toggle-always-confirm");
+  alwaysConfirmToggle.addEventListener("click", () => {
+    state.alwaysConfirmVideo = !state.alwaysConfirmVideo;
+    alwaysConfirmToggle.classList.toggle("on", state.alwaysConfirmVideo);
+    alwaysConfirmToggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
+    Api.savePreference("always_confirm_video", state.alwaysConfirmVideo);
+  });
 }
 
 /* ---------- external "open + download" requests (browser extension) ---------- */
@@ -1304,6 +1410,7 @@ function showResult(kind, title, text, filepath) {
   if (kind === "success") {
     icon.innerHTML = CHECK_ICON;
     runConfetti(state.confettiSeconds);
+    if (state.sfxEnabled) playDownloadCompleteSfx();
   } else {
     icon.textContent = kind === "cancelled" ? "!" : "✕";
   }
@@ -1447,23 +1554,51 @@ function playStartupChime() {
   } catch (err) { /* Web Audio unavailable -- a missing chime is harmless */ }
 }
 
-function runSplashScreen() {
-  playStartupChime();
-  const fill = $("splash-progress-fill");
-  const DURATION_MS = 2400;
-  const startedAt = performance.now();
-  return new Promise((resolve) => {
-    function tick(now) {
-      const pct = Math.min(100, ((now - startedAt) / DURATION_MS) * 100);
-      fill.style.width = `${pct}%`;
-      if (pct < 100) {
-        requestAnimationFrame(tick);
-      } else {
-        resolve();
-      }
-    }
-    requestAnimationFrame(tick);
-  });
+function playDownloadCompleteSfx() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 1;
+    master.connect(ctx.destination);
+
+    // Bright ascending flourish (E5-G#5-B5-E6) with a sparkly octave-up
+    // layer on each note -- an upbeat "done!" cue, not a long fanfare.
+    [
+      { freq: 659.25, start: 0.0, dur: 0.22, gain: 0.16 },
+      { freq: 830.61, start: 0.09, dur: 0.22, gain: 0.16 },
+      { freq: 987.77, start: 0.18, dur: 0.28, gain: 0.17 },
+      { freq: 1318.51, start: 0.3, dur: 0.55, gain: 0.2 },
+    ].forEach(({ freq, start, dur, gain }) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now + start);
+      g.gain.linearRampToValueAtTime(gain, now + start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+      osc.connect(g).connect(master);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.05);
+
+      const sparkle = ctx.createOscillator();
+      sparkle.type = "sine";
+      sparkle.frequency.value = freq * 2;
+      const gs = ctx.createGain();
+      gs.gain.setValueAtTime(0.0001, now + start);
+      gs.gain.linearRampToValueAtTime(gain * 0.35, now + start + 0.02);
+      gs.gain.exponentialRampToValueAtTime(0.0001, now + start + dur * 0.6);
+      sparkle.connect(gs).connect(master);
+      sparkle.start(now + start);
+      sparkle.stop(now + start + dur + 0.05);
+    });
+  } catch (err) { /* Web Audio unavailable -- a missing sfx is harmless */ }
+}
+
+function setSplashProgress(pct) {
+  $("splash-progress-fill").style.width = `${Math.max(0, Math.min(100, pct))}%`;
 }
 
 function hideSplashScreen() {
@@ -1472,7 +1607,10 @@ function hideSplashScreen() {
 
 /* ---------- init ---------- */
 async function init() {
-  const splashDone = runSplashScreen();
+  // The window itself is already visible with the splash on top by the time
+  // this runs -- the bar below is driven by real init milestones completing
+  // (not a fixed timer), so it never claims progress that hasn't happened.
+  setSplashProgress(4);
 
   initStartScreen();
   initUrlScreen();
@@ -1483,7 +1621,9 @@ async function init() {
   initAppUpdateModal();
   initChangelogModal();
   initWelcomeModal();
+  initRatingModal();
   initStopButton();
+  setSplashProgress(15);
 
   const settings = await Api.getSettings();
   state.settings = settings;
@@ -1495,11 +1635,20 @@ async function init() {
   state.destDir = settings.last_download_dir;
   state.showPreview = settings.show_preview !== false;
   state.confettiSeconds = settings.confetti_seconds || 5;
+  state.sfxEnabled = settings.sfx_enabled !== false;
+  state.alwaysConfirmVideo = settings.always_confirm_video !== false;
+  setSplashProgress(45);
 
-  const toggle = $("toggle-preview");
-  toggle.classList.toggle("on", state.showPreview);
-  toggle.setAttribute("aria-checked", String(state.showPreview));
+  const previewToggle = $("toggle-preview");
+  previewToggle.classList.toggle("on", state.showPreview);
+  previewToggle.setAttribute("aria-checked", String(state.showPreview));
   $("confetti-seconds-input").value = state.confettiSeconds;
+  const sfxToggle = $("toggle-sfx");
+  sfxToggle.classList.toggle("on", state.sfxEnabled);
+  sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
+  const alwaysConfirmToggle = $("toggle-always-confirm");
+  alwaysConfirmToggle.classList.toggle("on", state.alwaysConfirmVideo);
+  alwaysConfirmToggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
 
   initTheme(settings.theme);
 
@@ -1509,10 +1658,22 @@ async function init() {
     showToast(`Extension mise à jour (v${payload.version}) — rechargez-la (icône ↻ dans la page des extensions) puis actualisez vos onglets YouTube.`, 12000)
   );
 
+  if (state.sfxEnabled) playStartupChime();
+  setSplashProgress(55);
+
+  try {
+    await Api.getFfmpegStatus();
+  } catch (err) { /* non-fatal -- settings screen re-checks this on its own */ }
+  setSplashProgress(75);
+
   await checkWelcomeMessage();
+  setSplashProgress(88);
+
   await checkForUpdateOnStartup();
-  await splashDone;
+  setSplashProgress(100);
+
   hideSplashScreen();
+  startRatingFlowIfDue();
 }
 
 document.addEventListener("DOMContentLoaded", init);

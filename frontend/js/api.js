@@ -102,6 +102,10 @@ const Api = {
     await apiReady;
     return window.pywebview.api.get_changelog();
   },
+  async submitRating(stars, comment) {
+    await apiReady;
+    return window.pywebview.api.submit_rating(stars, comment);
+  },
   async checkForUpdate() {
     await apiReady;
     return window.pywebview.api.check_for_update();

@@ -10,7 +10,7 @@ from pathlib import Path
 import webview
 from yt_dlp.utils import DownloadCancelled
 
-from . import browsers, config, downloader, extension_installer, ffmpeg_manager, updater, window_utils
+from . import browsers, config, downloader, extension_installer, feedback, ffmpeg_manager, updater, window_utils
 
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
@@ -56,10 +56,17 @@ class Api:
         allowed = {
             "show_preview", "last_quality", "last_fps", "last_export_type",
             "last_output_format", "confetti_seconds", "last_seen_version",
+            "sfx_enabled", "always_confirm_video", "rated_version",
         }
         if key in allowed:
             config.save_settings({key: value})
         return True
+
+    def submit_rating(self, stars: float, comment: str):
+        ok = feedback.send_rating(stars, (comment or "").strip())
+        if ok:
+            config.save_settings({"rated_version": updater.APP_VERSION})
+        return {"ok": ok}
 
     # ---- folder picker (native) -------------------------------------------
     def pick_folder(self):

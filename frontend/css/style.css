@@ -997,6 +997,69 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 }
 .switch.on .switch-thumb { transform: translateX(20px); }
 
+.switch-sm { width: 34px; height: 20px; }
+.switch-sm .switch-thumb { width: 14px; height: 14px; top: 3px; left: 3px; }
+.switch-sm.on .switch-thumb { transform: translateX(14px); }
+
+/* ---------- Confirm modal: subtle "always confirm" toggle ---------- */
+.confirm-always-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  opacity: .55;
+  transition: opacity .2s;
+}
+.confirm-always-row:hover,
+.confirm-always-row:focus-within { opacity: 1; }
+.confirm-always-label { font-size: 11.5px; color: var(--text-2); line-height: 1.4; }
+
+/* ---------- Star rating ---------- */
+.star-rating { display: flex; justify-content: center; gap: 4px; margin: 20px 0 10px; }
+.star-btn {
+  position: relative;
+  width: 40px; height: 40px;
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.star-outline, .star-fill {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+}
+.star-outline { color: var(--border); }
+.star-fill {
+  color: #ffb648;
+  clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0);
+  transition: clip-path .08s linear;
+}
+.star-rating-value { text-align: center; font-size: 13px; font-weight: 600; color: var(--text-1); margin: 0 0 4px; }
+
+.rating-textarea {
+  width: 100%;
+  min-height: 110px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.rating-textarea:focus { border-color: var(--accent-2); }
+.rating-char-count { margin: 8px 2px 0; font-size: 12px; color: var(--text-2); text-align: right; }
+.rating-char-count.ok { color: var(--accent-3); }
+
 /* ---------- Confetti ---------- */
 .confetti-canvas {
   position: fixed;

@@ -259,6 +259,10 @@
           <button id="modal-cancel" class="btn-secondary">Annuler</button>
           <button id="modal-confirm-btn" class="btn-primary">Confirmer</button>
         </div>
+        <div class="confirm-always-row">
+          <span class="confirm-always-label">Toujours confirmer si il s'agit bien de la vidéo</span>
+          <button id="toggle-always-confirm" class="switch switch-sm" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+        </div>
       </div>
       <div id="modal-error" class="modal-error" hidden>
         <p id="modal-error-text" class="error-text"></p>
@@ -314,6 +318,13 @@
           <p class="hint-text">Affiche la vidéo en cours de lecture (sans son) à l'endroit téléchargé.</p>
         </div>
         <button id="toggle-preview" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-text">
+          <p class="settings-row-title">Effets sonores</p>
+          <p class="hint-text">Son de démarrage et son de fin de téléchargement.</p>
+        </div>
+        <button id="toggle-sfx" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
       </div>
       <div class="settings-row">
         <div class="settings-row-text">
@@ -396,6 +407,59 @@
       <p class="modal-meta">Consultez le bouton « Nouveautés », à côté de Paramètres, pour voir tout ce qui a changé.</p>
       <div class="modal-actions">
         <button id="welcome-close" class="btn-primary btn-full">Découvrir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : notation (obligatoire, sans bouton pour fermer) -->
+  <div id="modal-rating" class="modal-overlay">
+    <div class="modal">
+      <div id="rating-step-stars">
+        <span class="update-badge">Votre avis compte</span>
+        <h3>Que pensez-vous de Downloader Youtube ?</h3>
+        <p class="modal-meta">Prenez un instant pour noter l'application.</p>
+        <div class="star-rating" id="star-rating">
+          <button type="button" class="star-btn" data-star="1">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          </button>
+          <button type="button" class="star-btn" data-star="2">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          </button>
+          <button type="button" class="star-btn" data-star="3">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          </button>
+          <button type="button" class="star-btn" data-star="4">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          </button>
+          <button type="button" class="star-btn" data-star="5">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+          </button>
+        </div>
+        <p class="star-rating-value" id="star-rating-value">Survolez pour noter</p>
+        <div class="modal-actions">
+          <button id="rating-continue" class="btn-primary btn-full" disabled>Continuer</button>
+        </div>
+      </div>
+      <div id="rating-step-comment" hidden>
+        <h3>Un dernier mot ?</h3>
+        <p class="modal-meta">Dites-nous ce que vous en pensez (au moins 100 caractères).</p>
+        <textarea id="rating-comment" class="rating-textarea" rows="5" placeholder="Qu'est-ce qui vous plaît ? Qu'est-ce qu'on pourrait améliorer ?"></textarea>
+        <p class="rating-char-count" id="rating-char-count">0 / 100</p>
+        <div class="modal-actions">
+          <button id="rating-submit" class="btn-primary btn-full" disabled>Envoyer</button>
+        </div>
+      </div>
+      <div id="rating-step-done" hidden>
+        <h3>Merci pour votre avis !</h3>
+        <p class="modal-meta">Votre retour a bien été envoyé.</p>
+        <div class="modal-actions">
+          <button id="rating-close" class="btn-primary btn-full">Fermer</button>
+        </div>
       </div>
     </div>
   </div>
