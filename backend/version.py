@@ -1,6 +1,6 @@
 """Current app version and update-check configuration."""
 
-CURRENT_VERSION = "1.0"
+CURRENT_VERSION = "1.1"
 GITHUB_REPO = "Slipers/downloader-youtube"
 GITHUB_LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 INSTALLER_ASSET_NAME = "DownloaderYoutubeSetup.exe"

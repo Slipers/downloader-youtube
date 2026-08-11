@@ -566,23 +566,6 @@ function initOptionsScreen() {
     }
     beginDownloadProcess();
   });
-
-  initLiquidGlass();
-}
-
-function initLiquidGlass() {
-  const card = $("options-card");
-  card.addEventListener("mousemove", (e) => {
-    const rect = card.getBoundingClientRect();
-    const rx = ((0.5 - (e.clientY - rect.top) / rect.height) * 6).toFixed(2);
-    const ry = (((e.clientX - rect.left) / rect.width - 0.5) * 6).toFixed(2);
-    card.style.setProperty("--rx", `${rx}deg`);
-    card.style.setProperty("--ry", `${ry}deg`);
-  });
-  card.addEventListener("mouseleave", () => {
-    card.style.setProperty("--rx", "0deg");
-    card.style.setProperty("--ry", "0deg");
-  });
 }
 
 /* ---------- ffmpeg modal ---------- */
