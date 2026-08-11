@@ -18,7 +18,6 @@ YOUTUBE_URL_RE = re.compile(
 TIKTOK_URL_RE = re.compile(r"^https?://(www\.|vm\.|vt\.|m\.)?tiktok\.com/")
 SUPPORTED_URL_PATTERNS = (YOUTUBE_URL_RE, TIKTOK_URL_RE)
 
-COOKIES_FILE_PATH = config.APP_DIR / "imported_cookies.txt"
 WINDOW_TITLE = "Downloader Youtube"
 
 
@@ -79,37 +78,6 @@ class Api:
         except OSError:
             return False
 
-    # ---- cookies.txt import (fallback when browser cookie decryption is blocked) ----
-    def get_cookies_file_status(self):
-        path = config.load_settings().get("cookies_file")
-        return {"imported": bool(path and Path(path).exists())}
-
-    def import_cookies_file(self):
-        if not self.window:
-            return {"ok": False, "error": "Fenêtre indisponible."}
-        result = self.window.create_file_dialog(
-            webview.OPEN_DIALOG,
-            file_types=("Fichiers cookies (*.txt)", "Tous les fichiers (*.*)"),
-        )
-        if not result:
-            return {"ok": False, "error": None}
-        src = Path(result[0] if isinstance(result, (list, tuple)) else result)
-        try:
-            config.APP_DIR.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, COOKIES_FILE_PATH)
-        except OSError as exc:
-            return {"ok": False, "error": str(exc)}
-        config.save_settings({"cookies_file": str(COOKIES_FILE_PATH)})
-        return {"ok": True}
-
-    def clear_cookies_file(self):
-        try:
-            COOKIES_FILE_PATH.unlink(missing_ok=True)
-        except OSError:
-            pass
-        config.save_settings({"cookies_file": None})
-        return True
-
     # ---- video metadata -------------------------------------------------
     def is_valid_youtube_url(self, url: str):
         url = (url or "").strip()
@@ -119,14 +87,10 @@ class Api:
         if not self.is_valid_youtube_url(url):
             return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube ou TikTok valide."}
         try:
-            info = downloader.get_video_info(url.strip(), cookies_file=self._cookies_file())
+            info = downloader.get_video_info(url.strip())
             return {"ok": True, "data": info}
         except Exception as exc:
             return {"ok": False, "error": self._friendly_error(exc)}
-
-    def _cookies_file(self):
-        path = config.load_settings().get("cookies_file")
-        return path if path and Path(path).exists() else None
 
     def _friendly_error(self, exc: Exception) -> str:
         message = str(exc)
@@ -134,16 +98,13 @@ class Api:
             return (
                 "Cette vidéo nécessite une connexion à YouTube, et vos navigateurs installés "
                 "protègent leurs cookies d'une façon que l'application ne peut pas déchiffrer "
-                "automatiquement (fermer le navigateur ne suffit pas dans ce cas). Ouvrez les "
-                "Paramètres (⚙) et importez un fichier cookies.txt exporté depuis votre navigateur "
-                "pour contourner ce blocage définitivement."
+                "automatiquement (fermer le navigateur ne suffit pas dans ce cas)."
             )
         if downloader.is_bot_check_error(message) or downloader.is_cookie_extraction_error(message):
             return (
                 "Cette vidéo nécessite une vérification de connexion à YouTube. "
                 "L'application a essayé de s'authentifier automatiquement mais n'y est pas arrivée — "
-                "fermez complètement votre navigateur (y compris les processus en arrière-plan) puis "
-                "réessayez, ou importez un fichier cookies.txt dans les Paramètres (⚙)."
+                "fermez complètement votre navigateur (y compris les processus en arrière-plan) puis réessayez."
             )
         return f"Impossible de récupérer la vidéo : {message}"
 
@@ -211,10 +172,11 @@ class Api:
             result = downloader.download(
                 url, opts, on_progress, cancel_event=cancel_event,
                 cookies_browser_hint=options.get("cookies_browser_hint"),
-                cookies_file=self._cookies_file(),
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
-            config.save_settings({"last_download_dir": options.get("dest_dir")})
+            total = config.load_settings().get("total_downloads", 0) + 1
+            config.save_settings({"last_download_dir": options.get("dest_dir"), "total_downloads": total})
+            result["total_downloads"] = total
             self._push("download_complete", result)
         except DownloadCancelled:
             self._push("download_cancelled", {})

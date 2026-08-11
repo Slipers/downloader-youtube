@@ -157,34 +157,14 @@ function initSettingsModal() {
     btn.disabled = false;
     btn.textContent = "Mettre à jour";
   });
-  $("settings-toggle").addEventListener("click", refreshCookiesFileStatus);
-  $("btn-import-cookies").addEventListener("click", async () => {
-    const btn = $("btn-import-cookies");
-    btn.disabled = true;
-    const result = await Api.importCookiesFile();
-    if (!result.ok && result.error) {
-      $("cookies-file-status").textContent = `Échec de l'import : ${result.error}`;
-    }
-    await refreshCookiesFileStatus();
-    btn.disabled = false;
-  });
-  $("btn-clear-cookies").addEventListener("click", async () => {
-    await Api.clearCookiesFile();
-    await refreshCookiesFileStatus();
-  });
+
+  $("settings-toggle").addEventListener("click", refreshStats);
 }
 
-async function refreshCookiesFileStatus() {
-  const statusText = $("cookies-file-status");
-  const clearBtn = $("btn-clear-cookies");
-  const status = await Api.getCookiesFileStatus();
-  if (status.imported) {
-    statusText.textContent = "Fichier cookies.txt importé et actif.";
-    clearBtn.hidden = false;
-  } else {
-    statusText.textContent = "Aucun fichier importé.";
-    clearBtn.hidden = true;
-  }
+function refreshStats() {
+  const total = state.settings.total_downloads || 0;
+  $("stat-total-downloads").textContent = total;
+  $("stat-total-downloads-label").textContent = total === 1 ? "vidéo téléchargée" : "vidéos téléchargées";
 }
 
 async function refreshFfmpegStatus() {
@@ -287,7 +267,11 @@ async function onInstallBrowser(browser, btn) {
 let pendingUpdateInfo = null;
 
 function initAppUpdateModal() {
-  $("update-decline").addEventListener("click", () => closeModal("modal-app-update"));
+  // Deliberately no way to dismiss the "update available" state (no decline
+  // button, no backdrop-click handler anywhere in this app) -- an available
+  // update blocks the app until installed. The error state still gets a
+  // close button so a transient failure (e.g. no internet) doesn't brick
+  // the app permanently; it'll just ask again next launch.
   $("update-error-close").addEventListener("click", () => closeModal("modal-app-update"));
   $("update-accept").addEventListener("click", onAcceptUpdate);
 }
@@ -1036,6 +1020,7 @@ function runDownload() {
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
     showResult("success", "Téléchargement terminé", `Terminé en ${elapsed.toFixed(1)} s`, payload.filepath);
     state.viaExtension = false;
+    if (payload.total_downloads !== undefined) state.settings.total_downloads = payload.total_downloads;
   };
 
   const errorHandler = (payload) => {

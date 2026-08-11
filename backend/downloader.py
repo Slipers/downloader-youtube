@@ -226,12 +226,16 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     height_filter = "" if height is None else f"[height<={height}]"
     reencode = _needs_reencode(bitrate, tier["recommended_kbps"])
 
+    # A trailing unfiltered "best" catches sites like TikTok, where a portrait
+    # video's *width* is its short side -- yt-dlp still reports "height" as
+    # the long side, so a height<=X tier filter can exclude every available
+    # format and fail outright instead of just settling for what exists.
     if export_type == "video_only":
-        opts["format"] = f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}"
+        opts["format"] = f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}/best"
         if reencode or output_format:
             opts["postprocessors"] = [{"key": "FFmpegVideoConvertor", "preferedformat": container}]
     else:  # video_audio
-        opts["format"] = f"bestvideo{height_filter}{fps_filter}+bestaudio/best{height_filter}{fps_filter}"
+        opts["format"] = f"bestvideo{height_filter}{fps_filter}+bestaudio/best{height_filter}{fps_filter}/best"
         opts["merge_output_format"] = container
 
     if reencode:

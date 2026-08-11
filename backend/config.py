@@ -29,9 +29,9 @@ DEFAULTS = {
     "last_export_type": "video_audio",
     "last_output_format": None,
     "confetti_seconds": 5,
-    "cookies_file": None,
     "paired": False,
     "pairing_token": None,
+    "total_downloads": 0,
 }
 
 

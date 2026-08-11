@@ -46,18 +46,6 @@ const Api = {
     await apiReady;
     return window.pywebview.api.pick_folder();
   },
-  async getCookiesFileStatus() {
-    await apiReady;
-    return window.pywebview.api.get_cookies_file_status();
-  },
-  async importCookiesFile() {
-    await apiReady;
-    return window.pywebview.api.import_cookies_file();
-  },
-  async clearCookiesFile() {
-    await apiReady;
-    return window.pywebview.api.clear_cookies_file();
-  },
   async fetchVideoInfo(url) {
     await apiReady;
     return window.pywebview.api.fetch_video_info(url);
