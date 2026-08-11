@@ -24,7 +24,72 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.13"
+APP_VERSION = "1.14"
+
+# Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
+# bullets (not the raw GitHub release body) so the changelog UI never has to
+# parse markdown -- update this alongside APP_VERSION and the GitHub release
+# notes when publishing.
+CHANGELOG = [
+    {
+        "version": "1.14",
+        "date": "11 août 2026",
+        "bullets": [
+            "Correction du bouton d'installation de l'extension qui échouait à chaque tentative (le dossier de l'extension n'était pas inclus dans l'application installée).",
+            "Message clair « Veuillez télécharger l'extension avant de mettre à jour » quand l'extension n'est pas encore installée.",
+            "La fenêtre de mise à jour affiche désormais un résumé simple, avec un bouton « Nouveautés » pour voir le détail des changements.",
+            "Le fond d'écran se teinte de rouge pour YouTube et de bleu pour TikTok selon la plateforme sélectionnée.",
+        ],
+    },
+    {
+        "version": "1.13",
+        "date": "11 août 2026",
+        "bullets": [
+            "Correction du bouton d'installation de l'extension qui restait bloqué sur « Préparation… ».",
+            "Nouveau choix automatique/manuel pour installer l'extension.",
+            "Les paramètres s'adaptent à la taille de la fenêtre au lieu d'afficher une barre de défilement.",
+            "Bannière de mise à jour de l'extension plus compacte.",
+        ],
+    },
+    {
+        "version": "1.12",
+        "date": "11 août 2026",
+        "bullets": [
+            "Correction du téléchargement de vidéos TikTok.",
+            "Refonte des paramètres, avec statistique du nombre de vidéos téléchargées.",
+            "Retrait de la vérification anti-robot par cookies.txt.",
+            "Les mises à jour de l'application sont désormais obligatoires.",
+        ],
+    },
+    {
+        "version": "1.11",
+        "date": "11 août 2026",
+        "bullets": [
+            "Ajout de l'extension navigateur, liée à l'application.",
+            "Système de mise à jour automatique intégré, avec publication sur GitHub.",
+            "Prise en charge du téléchargement de vidéos TikTok.",
+        ],
+    },
+    {
+        "version": "1.1",
+        "date": "11 août 2026",
+        "bullets": [
+            "L'interface s'adapte correctement à la taille de la fenêtre.",
+            "Tutoriel de bienvenue : espacement corrigé.",
+            "Suppression de l'effet d'inclinaison 3D au survol du panneau de réglages.",
+        ],
+    },
+    {
+        "version": "1.0",
+        "date": "11 août 2026",
+        "bullets": [
+            "Première version publique de Downloader Youtube.",
+            "Téléchargement de vidéos YouTube avec choix de qualité, fps et format.",
+            "Détection et installation automatique de FFmpeg.",
+            "Aperçu en direct pendant le téléchargement, thème jour/nuit, confettis de fin.",
+        ],
+    },
+]
 
 # This machine's own dev build -- lets "Mettre à jour" work with zero hosting
 # while iterating locally. Harmless no-op on any other machine (path won't exist).
@@ -44,6 +109,10 @@ def is_frozen() -> bool:
 def parse_version(v: str) -> tuple:
     parts = re.findall(r"\d+", v or "")
     return tuple(int(p) for p in parts) or (0,)
+
+
+def get_changelog() -> dict:
+    return {"installed_version": APP_VERSION, "entries": CHANGELOG}
 
 
 def _check_local_source() -> dict | None:

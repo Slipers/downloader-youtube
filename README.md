@@ -19,7 +19,7 @@ python app.py
 pip install pyinstaller pillow
 python installer/generate_icon.py  # régénère assets/icon.ico si besoin
 
-pyinstaller app.py --name "DownloaderYoutube" --windowed --noconfirm --clean --icon "assets/icon.ico" --add-data "frontend;frontend" --add-data "assets;assets"
+pyinstaller app.py --name "DownloaderYoutube" --windowed --noconfirm --clean --icon "assets/icon.ico" --add-data "frontend;frontend" --add-data "assets;assets" --add-data "extension;extension"
 pyinstaller installer/uninstall.py --name "uninstall" --onefile --windowed --noconfirm --clean --icon "assets/icon.ico" --distpath dist_uninstall
 cp dist_uninstall/uninstall.exe dist/DownloaderYoutube/uninstall.exe
 pyinstaller installer/installer.py --name "DownloaderYoutubeSetup" --onefile --windowed --noconfirm --clean --icon "assets/icon.ico" --add-data "dist/DownloaderYoutube;app" --add-data "assets;assets" --distpath dist_installer

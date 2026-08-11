@@ -126,7 +126,10 @@ def install_extension(browser_id: str, mode: str = "manual") -> dict:
     if not browser:
         return {"ok": False, "error": "browser_not_found"}
 
-    _sync_extension_files()
+    try:
+        _sync_extension_files()
+    except OSError:
+        return {"ok": False, "error": "extension_files_missing"}
     try:
         # Only feeds the (unreliable, best-effort) enterprise-policy route
         # below -- the guided "Load unpacked" flow that's actually shown to
@@ -164,7 +167,10 @@ def sync_only() -> dict:
     """Re-copies the bundled extension files without touching browser policy
     -- used by the "Mettre à jour l'extension" flow, which doesn't need to
     know which browser it's for (the user just reloads it themselves)."""
-    _sync_extension_files()
+    try:
+        _sync_extension_files()
+    except OSError:
+        return {"ok": False, "error": "extension_files_missing"}
     try:
         build_crx(force=True)
     except Exception:

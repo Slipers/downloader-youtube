@@ -98,6 +98,10 @@ const Api = {
     await apiReady;
     return window.pywebview.api.get_app_version();
   },
+  async getChangelog() {
+    await apiReady;
+    return window.pywebview.api.get_changelog();
+  },
   async checkForUpdate() {
     await apiReady;
     return window.pywebview.api.check_for_update();

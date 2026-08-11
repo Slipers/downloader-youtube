@@ -340,9 +340,12 @@
   <div id="modal-app-update" class="modal-overlay">
     <div class="modal">
       <div id="update-ask" class="ffmpeg-step">
+        <button type="button" id="btn-open-changelog" class="modal-corner-btn" aria-label="Voir les nouveautés" title="Voir les nouveautés">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+        </button>
         <span class="update-badge">Nouvelle version</span>
         <h3>Downloader Youtube <span id="update-version-label" class="update-version"></span></h3>
-        <p class="modal-meta" id="update-notes"></p>
+        <p class="modal-meta">Une nouvelle version de l'application est disponible avec des corrections et des améliorations.</p>
         <p class="modal-meta update-mandatory-note">Cette mise à jour est nécessaire pour continuer à utiliser l'application.</p>
         <div class="modal-actions">
           <button id="update-accept" class="btn-primary btn-full">Mettre à jour</button>
@@ -367,6 +370,18 @@
           <button id="update-error-close" class="btn-secondary btn-full">Fermer</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal : nouveautés / changelog -->
+  <div id="modal-changelog" class="modal-overlay">
+    <div class="modal changelog-modal">
+      <button type="button" id="changelog-close" class="modal-corner-btn" aria-label="Fermer" title="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <h3>Nouveautés</h3>
+      <p class="modal-meta" id="changelog-installed-version"></p>
+      <div class="changelog-list" id="changelog-list"></div>
     </div>
   </div>
 

@@ -194,10 +194,16 @@ function initSettingsModal() {
     btn.disabled = true;
     btn.textContent = "Mise à jour…";
     try {
-      await Api.updateExtensionFiles();
-      $("extension-update-row").hidden = true;
-      fitModalToViewport("modal-settings");
-      showToast("Extension mise à jour — rechargez-la (icône ↻ dans la page des extensions) puis actualisez YouTube.");
+      const result = await Api.updateExtensionFiles();
+      if (result.ok) {
+        $("extension-update-row").hidden = true;
+        fitModalToViewport("modal-settings");
+        showToast("Extension mise à jour — rechargez-la (icône ↻ dans la page des extensions) puis actualisez YouTube.");
+      } else {
+        showToast("Échec de la mise à jour de l'extension.");
+      }
+    } catch (err) {
+      showToast("Échec de la mise à jour de l'extension.");
     } finally {
       btn.disabled = false;
       btn.textContent = "Mettre à jour";
@@ -255,8 +261,14 @@ async function refreshExtensionSettings() {
     : "Non liée — installez l'extension puis cliquez « Lier » dans son menu.";
 
   const updateRow = $("extension-update-row");
-  if (extUpdate.available) {
+  const updateBtn = $("btn-update-extension");
+  if (extUpdate.available && status.paired) {
     $("extension-update-text").textContent = `Nouvelle version de l'extension disponible (v${extUpdate.version}).`;
+    updateBtn.hidden = false;
+    updateRow.hidden = false;
+  } else if (extUpdate.available && !status.paired) {
+    $("extension-update-text").textContent = "Veuillez télécharger l'extension avant de mettre à jour.";
+    updateBtn.hidden = true;
     updateRow.hidden = false;
   } else {
     updateRow.hidden = true;
@@ -318,6 +330,11 @@ async function runInstall(mode) {
 
   if (!result.ok) {
     btn.textContent = "Échec";
+    showToast(
+      result.error === "extension_files_missing"
+        ? "Fichiers de l'extension introuvables — réinstallez l'application."
+        : "Échec de l'installation de l'extension.",
+    );
     setTimeout(() => { btn.disabled = false; btn.textContent = originalLabel; }, 3000);
     return;
   }
@@ -359,6 +376,41 @@ function initAppUpdateModal() {
   $("update-accept").addEventListener("click", onAcceptUpdate);
 }
 
+let changelogLoaded = false;
+
+function initChangelogModal() {
+  $("btn-open-changelog").addEventListener("click", async () => {
+    openModal("modal-changelog");
+    if (changelogLoaded) return;
+    try {
+      const { installed_version, entries } = await Api.getChangelog();
+      $("changelog-installed-version").textContent = `Version installée : v${installed_version}`;
+      const list = $("changelog-list");
+      list.innerHTML = "";
+      entries.forEach((entry, i) => {
+        const item = document.createElement("div");
+        item.className = "changelog-entry";
+        const isNewest = i === 0;
+        item.innerHTML = `
+          <div class="changelog-entry-marker${isNewest ? " newest" : ""}"></div>
+          <div class="changelog-entry-body">
+            <div class="changelog-entry-head">
+              <span class="changelog-entry-version">Version ${entry.version}</span>
+              ${isNewest ? '<span class="changelog-entry-badge">Nouveau</span>' : ""}
+              <span class="changelog-entry-date">${entry.date}</span>
+            </div>
+            <ul>${entry.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      changelogLoaded = true;
+      fitModalToViewport("modal-changelog");
+    } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
+  });
+  $("changelog-close").addEventListener("click", () => closeModal("modal-changelog"));
+}
+
 async function checkForUpdateOnStartup() {
   let result;
   try {
@@ -374,9 +426,6 @@ async function checkForUpdateOnStartup() {
   $("update-installing").hidden = true;
   $("update-error").hidden = true;
   $("update-version-label").textContent = `v${result.version}`;
-  $("update-notes").textContent =
-    (result.notes || "Une nouvelle version est disponible.") +
-    " L'extension sera mise à jour avec l'application (un rechargement dans le navigateur restera nécessaire).";
   openModal("modal-app-update");
 }
 
@@ -435,6 +484,7 @@ function initExtensionInstallModal() {
 /* ---------- start -> url ---------- */
 function initStartScreen() {
   $("btn-start").addEventListener("click", () => {
+    setPlatform(state.platform);
     showScreen("screen-url");
     setTimeout(() => $("url-input").focus(), 250);
   });
@@ -452,6 +502,8 @@ function setPlatform(platform) {
   document.querySelectorAll(".platform-option").forEach((opt) => {
     opt.classList.toggle("active", opt.dataset.platform === platform);
   });
+  $("app").classList.toggle("platform-youtube", platform === "youtube");
+  $("app").classList.toggle("platform-tiktok", platform === "tiktok");
   $("url-input").dispatchEvent(new Event("input"));
 }
 
@@ -1296,6 +1348,7 @@ async function init() {
   initExtensionInstallChoiceModal();
   initExtensionInstallModal();
   initAppUpdateModal();
+  initChangelogModal();
   initStopButton();
 
   const settings = await Api.getSettings();

@@ -19,7 +19,7 @@ from pathlib import Path
 from tkinter import filedialog
 
 APP_NAME = "Downloader Youtube"
-APP_VERSION = "1.13"
+APP_VERSION = "1.14"
 EXE_NAME = "DownloaderYoutube.exe"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\DownloaderYoutube"
 

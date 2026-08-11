@@ -211,6 +211,9 @@ class Api:
     def get_app_version(self):
         return updater.APP_VERSION
 
+    def get_changelog(self):
+        return updater.get_changelog()
+
     def check_for_update(self):
         return updater.check_for_update()
 
