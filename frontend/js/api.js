@@ -86,9 +86,9 @@ const Api = {
     await apiReady;
     return window.pywebview.api.list_browsers();
   },
-  async installExtension(browserId, mode = "manual") {
+  async installExtension(browserId) {
     await apiReady;
-    return window.pywebview.api.install_extension(browserId, mode);
+    return window.pywebview.api.install_extension(browserId);
   },
   async launchBrowser(browserId) {
     await apiReady;

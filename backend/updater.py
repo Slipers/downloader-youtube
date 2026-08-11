@@ -24,13 +24,23 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.15"
+APP_VERSION = "1.16"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.16",
+        "date": "11 août 2026",
+        "bullets": [
+            "Écran de démarrage animé au lancement de l'application, avec logo et barre de progression.",
+            "Message de bienvenue affiché après chaque mise à jour, indiquant la nouvelle version installée.",
+            "L'installation de l'extension est maintenant toujours automatique (le choix manuel/automatique a été retiré, jugé inutile).",
+            "Correction de l'alignement du compteur de vidéos téléchargées dans les paramètres.",
+        ],
+    },
     {
         "version": "1.15",
         "date": "11 août 2026",

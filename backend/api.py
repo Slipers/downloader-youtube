@@ -55,7 +55,7 @@ class Api:
     def save_preference(self, key: str, value):
         allowed = {
             "show_preview", "last_quality", "last_fps", "last_export_type",
-            "last_output_format", "confetti_seconds",
+            "last_output_format", "confetti_seconds", "last_seen_version",
         }
         if key in allowed:
             config.save_settings({key: value})
@@ -192,8 +192,8 @@ class Api:
     def list_browsers(self):
         return browsers.detect_browsers()
 
-    def install_extension(self, browser_id: str, mode: str = "manual"):
-        return extension_installer.install_extension(browser_id, mode)
+    def install_extension(self, browser_id: str):
+        return extension_installer.install_extension(browser_id)
 
     def launch_browser(self, browser_id: str):
         return browsers.launch_browser(browser_id)

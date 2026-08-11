@@ -120,14 +120,13 @@ def _copy_to_clipboard(text: str) -> bool:
         return False
 
 
-def install_extension(browser_id: str, mode: str = "manual") -> dict:
+def install_extension(browser_id: str) -> dict:
     """Stages the extension and hands back a folder ready for "Load unpacked".
 
-    `mode="auto"` additionally pre-flips Developer Mode in the browser's own
-    profile (if it's closed) and copies the install folder to the clipboard,
-    trimming the guided flow down to "paste URL, click Load unpacked, paste
-    path" -- the last click can't be automated away (see module docstring).
-    `mode="manual"` leaves the browser profile untouched.
+    Also pre-flips Developer Mode in the browser's own profile (if it's
+    closed) and copies the install folder to the clipboard, trimming the
+    guided flow down to "paste URL, click Load unpacked, paste path" -- the
+    last click can't be automated away (see module docstring).
     """
     browser = browsers.get_browser(browser_id)
     if not browser:
@@ -141,7 +140,7 @@ def install_extension(browser_id: str, mode: str = "manual") -> dict:
     running = _is_process_running(browser["exe"])
 
     dev_mode_set = False
-    if mode == "auto" and not running and browser.get("user_data_dir"):
+    if not running and browser.get("user_data_dir"):
         dev_mode_set = _enable_dev_mode_in_profiles(browser["user_data_dir"])
 
     path_copied = _copy_to_clipboard(str(config.EXTENSION_INSTALL_DIR))

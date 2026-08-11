@@ -304,20 +304,20 @@ async function refreshExtensionSettings() {
   fitModalToViewport("modal-settings");
 }
 
-let pendingInstallBrowser = null;
-let pendingInstallBtn = null;
-
-function onInstallBrowser(browser, btn) {
-  pendingInstallBrowser = browser;
-  pendingInstallBtn = btn;
+async function onInstallBrowser(browser, btn) {
   $("ext-choice-browser-name").textContent = browser.name;
-  $("ext-choice-picker").hidden = false;
-  $("ext-auto-progress").hidden = true;
   document.querySelectorAll("#ext-auto-steps .fetch-step").forEach((el) => el.classList.remove("active", "done"));
   openModal("modal-extension-install-choice");
-}
 
-function showInstallResult(browser, btn, result) {
+  let result;
+  try {
+    result = await runFetchStagesAnimation(Api.installExtension(browser.id), "ext-auto-steps");
+  } catch (err) {
+    result = { ok: false };
+  }
+
+  closeModal("modal-extension-install-choice");
+
   if (!result.ok) {
     btn.disabled = true;
     const originalLabel = btn.textContent;
@@ -342,56 +342,6 @@ function showInstallResult(browser, btn, result) {
 
   btn.disabled = false;
   btn.textContent = "Réinstaller";
-}
-
-async function runInstallManual() {
-  const browser = pendingInstallBrowser;
-  const btn = pendingInstallBtn;
-  closeModal("modal-extension-install-choice");
-  if (!browser) return;
-
-  btn.disabled = true;
-  const originalLabel = btn.textContent;
-  btn.textContent = "Préparation…";
-  let result;
-  try {
-    result = await Api.installExtension(browser.id, "manual");
-  } catch (err) {
-    result = { ok: false };
-  }
-  btn.textContent = originalLabel;
-  showInstallResult(browser, btn, result);
-}
-
-async function runInstallAuto() {
-  const browser = pendingInstallBrowser;
-  const btn = pendingInstallBtn;
-  if (!browser) return;
-
-  $("ext-choice-picker").hidden = true;
-  $("ext-auto-progress").hidden = false;
-  fitModalToViewport("modal-extension-install-choice");
-
-  let result;
-  try {
-    result = await runFetchStagesAnimation(Api.installExtension(browser.id, "auto"), "ext-auto-steps");
-  } catch (err) {
-    result = { ok: false };
-  }
-
-  closeModal("modal-extension-install-choice");
-  showInstallResult(browser, btn, result);
-}
-
-function initExtensionInstallChoiceModal() {
-  $("ext-choice-auto").addEventListener("click", runInstallAuto);
-  $("ext-choice-manual").addEventListener("click", runInstallManual);
-  $("ext-choice-cancel").addEventListener("click", () => {
-    closeModal("modal-extension-install-choice");
-    if (pendingInstallBtn) pendingInstallBtn.disabled = false;
-    pendingInstallBrowser = null;
-    pendingInstallBtn = null;
-  });
 }
 
 /* ---------- app update ---------- */
@@ -513,6 +463,31 @@ function initExtensionInstallModal() {
       } catch (err) { /* ignore */ }
     });
   });
+}
+
+/* ---------- post-update welcome ---------- */
+function initWelcomeModal() {
+  $("welcome-close").addEventListener("click", () => closeModal("modal-welcome"));
+}
+
+async function checkWelcomeMessage() {
+  let appVersion;
+  try {
+    appVersion = await Api.getAppVersion();
+  } catch (err) {
+    return;
+  }
+  const lastSeen = state.settings.last_seen_version;
+  // Only announce on the launch right after an update -- a brand new
+  // install has no "previous version" to welcome back from, so lastSeen
+  // being unset (first ever launch) is deliberately not announced.
+  if (lastSeen && lastSeen !== appVersion) {
+    $("welcome-version").textContent = `v${appVersion}`;
+    openModal("modal-welcome");
+  }
+  if (lastSeen !== appVersion) {
+    Api.savePreference("last_seen_version", appVersion);
+  }
 }
 
 /* ---------- start -> url ---------- */
@@ -1374,17 +1349,69 @@ function showResult(kind, title, text, filepath) {
   actions.appendChild(restartBtn);
 }
 
+/* ---------- startup splash ---------- */
+function playStartupChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    // A short two-note chime (not any existing brand's jingle) -- rises from
+    // G4 to D5 with a soft attack/decay envelope on each note.
+    [
+      { freq: 392.0, start: 0, dur: 0.3, gain: 0.14 },
+      { freq: 587.33, start: 0.24, dur: 0.6, gain: 0.18 },
+    ].forEach(({ freq, start, dur, gain }) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gainNode.gain.setValueAtTime(0.0001, now + start);
+      gainNode.gain.linearRampToValueAtTime(gain, now + start + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+      osc.connect(gainNode).connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.05);
+    });
+  } catch (err) { /* Web Audio unavailable -- a missing chime is harmless */ }
+}
+
+function runSplashScreen() {
+  playStartupChime();
+  const fill = $("splash-progress-fill");
+  const DURATION_MS = 1900;
+  const startedAt = performance.now();
+  return new Promise((resolve) => {
+    function tick(now) {
+      const pct = Math.min(100, ((now - startedAt) / DURATION_MS) * 100);
+      fill.style.width = `${pct}%`;
+      if (pct < 100) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function hideSplashScreen() {
+  $("splash-screen").classList.add("hidden");
+}
+
 /* ---------- init ---------- */
 async function init() {
+  const splashDone = runSplashScreen();
+
   initStartScreen();
   initUrlScreen();
   initConfirmModal();
   initOptionsScreen();
   initSettingsModal();
-  initExtensionInstallChoiceModal();
   initExtensionInstallModal();
   initAppUpdateModal();
   initChangelogModal();
+  initWelcomeModal();
   initStopButton();
 
   const settings = await Api.getSettings();
@@ -1411,7 +1438,10 @@ async function init() {
     showToast(`Extension mise à jour (v${payload.version}) — rechargez-la (icône ↻ dans la page des extensions) puis actualisez vos onglets YouTube.`, 12000)
   );
 
-  checkForUpdateOnStartup();
+  await checkWelcomeMessage();
+  await checkForUpdateOnStartup();
+  await splashDone;
+  hideSplashScreen();
 }
 
 document.addEventListener("DOMContentLoaded", init);

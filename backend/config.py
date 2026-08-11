@@ -30,6 +30,7 @@ DEFAULTS = {
     "paired": False,
     "pairing_token": None,
     "total_downloads": 0,
+    "last_seen_version": None,
 }
 
 

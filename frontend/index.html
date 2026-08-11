@@ -10,6 +10,13 @@
 <body>
 <div id="app">
 
+  <div id="splash-screen" class="splash-screen">
+    <div class="splash-logo">Downloader <span class="accent">Youtube</span></div>
+    <div class="splash-progress-wrap">
+      <div class="progress-bar"><div id="splash-progress-fill" class="progress-bar-fill"></div></div>
+    </div>
+  </div>
+
   <div class="topbar" aria-hidden="false">
     <button id="btn-open-changelog" class="icon-btn" aria-label="Nouveautés" title="Nouveautés">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
@@ -381,6 +388,18 @@
     </div>
   </div>
 
+  <!-- Modal : bienvenue après une mise à jour -->
+  <div id="modal-welcome" class="modal-overlay">
+    <div class="modal">
+      <span class="update-badge">Mise à jour installée</span>
+      <h3>Bienvenue dans la nouvelle version <span id="welcome-version" class="update-version"></span> !</h3>
+      <p class="modal-meta">Consultez le bouton « Nouveautés », à côté de Paramètres, pour voir tout ce qui a changé.</p>
+      <div class="modal-actions">
+        <button id="welcome-close" class="btn-primary btn-full">Découvrir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal : nouveautés / changelog -->
   <div id="modal-changelog" class="modal-overlay">
     <div class="modal changelog-modal">
@@ -393,36 +412,17 @@
     </div>
   </div>
 
-  <!-- Modal : choix du mode d'installation de l'extension -->
+  <!-- Modal : installation automatique de l'extension -->
   <div id="modal-extension-install-choice" class="modal-overlay">
     <div class="modal">
-      <div id="ext-choice-picker">
-        <h3>Installer l'extension</h3>
-        <p class="modal-meta">Comment voulez-vous l'installer sur <strong id="ext-choice-browser-name">ce navigateur</strong> ?</p>
-        <div class="install-choice-list">
-          <button type="button" id="ext-choice-auto" class="install-choice-option">
-            <span class="install-choice-title">Automatique <span class="install-choice-badge">Recommandé</span></span>
-            <span class="install-choice-hint">L'application active le mode développeur et prépare tout pour vous. Il ne reste qu'un clic sur « Charger l'extension non empaquetée » — la seule étape que Chrome ne laisse pas automatiser.</span>
-          </button>
-          <button type="button" id="ext-choice-manual" class="install-choice-option">
-            <span class="install-choice-title">Manuelle</span>
-            <span class="install-choice-hint">L'application ne touche pas au navigateur ; vous suivez chaque étape vous-même.</span>
-          </button>
-        </div>
-        <div class="modal-actions">
-          <button id="ext-choice-cancel" class="btn-secondary btn-full">Annuler</button>
-        </div>
-      </div>
-      <div id="ext-auto-progress" hidden>
-        <h3>Installation automatique</h3>
-        <p class="modal-meta">Quelques secondes, l'application prépare tout pour vous.</p>
-        <ol class="fetch-steps" id="ext-auto-steps">
-          <li class="fetch-step" data-step="check"><span class="fetch-step-icon"></span>Vérification du navigateur</li>
-          <li class="fetch-step" data-step="devmode"><span class="fetch-step-icon"></span>Activation du mode développeur</li>
-          <li class="fetch-step" data-step="files"><span class="fetch-step-icon"></span>Préparation des fichiers de l'extension</li>
-          <li class="fetch-step" data-step="clipboard"><span class="fetch-step-icon"></span>Copie du dossier dans le presse-papiers</li>
-        </ol>
-      </div>
+      <h3>Installation automatique</h3>
+      <p class="modal-meta">Préparation de l'extension pour <strong id="ext-choice-browser-name">ce navigateur</strong>…</p>
+      <ol class="fetch-steps" id="ext-auto-steps">
+        <li class="fetch-step" data-step="check"><span class="fetch-step-icon"></span>Vérification du navigateur</li>
+        <li class="fetch-step" data-step="devmode"><span class="fetch-step-icon"></span>Activation du mode développeur</li>
+        <li class="fetch-step" data-step="files"><span class="fetch-step-icon"></span>Préparation des fichiers de l'extension</li>
+        <li class="fetch-step" data-step="clipboard"><span class="fetch-step-icon"></span>Copie du dossier dans le presse-papiers</li>
+      </ol>
     </div>
   </div>
 
