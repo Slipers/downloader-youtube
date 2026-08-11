@@ -12,13 +12,14 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import winreg
 from pathlib import Path
 from tkinter import filedialog
 
 APP_NAME = "Downloader Youtube"
-APP_VERSION = "1.1"  # keep in sync with backend/version.py CURRENT_VERSION
+APP_VERSION = "1.11"
 EXE_NAME = "DownloaderYoutube.exe"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\DownloaderYoutube"
 
@@ -48,6 +49,33 @@ def default_install_dir() -> Path:
     return Path(os.environ["LOCALAPPDATA"]) / "Programs" / APP_NAME
 
 
+def close_running_app():
+    """A previous instance holding EXE_NAME (or one of its DLLs) open would
+    otherwise make the file copy below hang/fail silently -- close it first,
+    the same way any well-behaved installer does."""
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", EXE_NAME],
+            capture_output=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        time.sleep(0.6)  # let Windows release the file handles
+    except OSError:
+        pass
+
+
+def copy_with_retry(src_file: Path, target: Path, attempts=6, delay=0.5):
+    last_exc = None
+    for _ in range(attempts):
+        try:
+            shutil.copy2(src_file, target)
+            return
+        except PermissionError as exc:
+            last_exc = exc
+            time.sleep(delay)
+    raise last_exc
+
+
 def create_shortcut(link_path: Path, target: Path, workdir: Path):
     script = (
         f'$s = (New-Object -COM WScript.Shell).CreateShortcut("{link_path}"); '
@@ -61,65 +89,6 @@ def create_shortcut(link_path: Path, target: Path, workdir: Path):
         check=True,
         creationflags=subprocess.CREATE_NO_WINDOW,
     )
-
-
-def perform_install(install_dir: Path, create_desktop_shortcut: bool, status_cb=None) -> int:
-    """Copies the bundled app into install_dir, (re)creates shortcuts and the
-    Add/Remove Programs entry. Used by both the GUI wizard and --silent-update.
-    Returns the total installed size in bytes."""
-    def report(msg):
-        if status_cb:
-            status_cb(msg)
-
-    src = bundled_app_dir()
-    install_dir.mkdir(parents=True, exist_ok=True)
-
-    files = [p for p in src.rglob("*") if p.is_file()]
-    total = max(1, len(files))
-    total_size = 0
-
-    for i, f in enumerate(files, start=1):
-        rel = f.relative_to(src)
-        target = install_dir / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(f, target)
-        total_size += f.stat().st_size
-        report(f"Copie des fichiers… {i}/{total}")
-
-    report("Création des raccourcis…")
-    exe_path = install_dir / EXE_NAME
-    start_menu_dir = Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs"
-    start_menu_dir.mkdir(parents=True, exist_ok=True)
-    create_shortcut(start_menu_dir / f"{APP_NAME}.lnk", exe_path, install_dir)
-    if create_desktop_shortcut:
-        desktop = Path(os.environ["USERPROFILE"]) / "Desktop"
-        create_shortcut(desktop / f"{APP_NAME}.lnk", exe_path, install_dir)
-
-    report("Enregistrement dans Ajout/Suppression de programmes…")
-    register_uninstall(install_dir, size_kb=total_size // 1024)
-    return total_size
-
-
-def run_silent_update(install_dir_str: str):
-    """Headless update path: relaunched by the running app with
-    `--silent-update <install_dir>`. Waits briefly for the old app to fully
-    exit (it kills itself right after spawning this process), reinstalls over
-    the same directory, then launches the new version. No window is shown."""
-    import time
-
-    install_dir = Path(install_dir_str)
-    time.sleep(1.5)  # let the previous process release the exe file lock
-
-    try:
-        perform_install(install_dir, create_desktop_shortcut=False)
-    except Exception:
-        pass  # best-effort; the user's existing install is untouched on failure
-
-    try:
-        exe_path = install_dir / EXE_NAME
-        subprocess.Popen([str(exe_path)], cwd=str(install_dir))
-    except OSError:
-        pass
 
 
 def register_uninstall(install_dir: Path, size_kb: int):
@@ -358,20 +327,40 @@ class InstallerApp(tk.Tk):
 
     def _run_install(self):
         try:
+            self.status_text.set("Fermeture d'une éventuelle instance en cours…")
+            close_running_app()
+
+            src = bundled_app_dir()
             dest = Path(self.install_dir.get())
-            files_total = max(1, len(list(bundled_app_dir().rglob("*"))))
-            seen = {"n": 0}
+            dest.mkdir(parents=True, exist_ok=True)
 
-            def on_status(msg):
-                if msg.startswith("Copie"):
-                    seen["n"] += 1
-                    self.progress_value.set(min(90, seen["n"] / files_total * 90))
-                else:
-                    self.progress_value.set(95)
-                self.status_text.set(msg)
+            files = [p for p in src.rglob("*") if p.is_file()]
+            total = max(1, len(files))
+            total_size = 0
 
-            perform_install(dest, self.desktop_shortcut.get(), status_cb=on_status)
+            for i, f in enumerate(files, start=1):
+                rel = f.relative_to(src)
+                target = dest / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                copy_with_retry(f, target)
+                total_size += f.stat().st_size
+                self.progress_value.set(i / total * 90)
+                self.status_text.set(f"Copie des fichiers… {i}/{total}")
+
+            self.status_text.set("Création des raccourcis…")
+            exe_path = dest / EXE_NAME
+            start_menu_dir = Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs"
+            start_menu_dir.mkdir(parents=True, exist_ok=True)
+            create_shortcut(start_menu_dir / f"{APP_NAME}.lnk", exe_path, dest)
+            if self.desktop_shortcut.get():
+                desktop = Path(os.environ["USERPROFILE"]) / "Desktop"
+                create_shortcut(desktop / f"{APP_NAME}.lnk", exe_path, dest)
+            self.progress_value.set(95)
+
+            self.status_text.set("Enregistrement dans Ajout/Suppression de programmes…")
+            register_uninstall(dest, size_kb=total_size // 1024)
             self.progress_value.set(100)
+
             self.after(300, self._show_done)
         except Exception as exc:
             self.after(0, lambda: self._show_error(str(exc)))
@@ -408,7 +397,4 @@ class InstallerApp(tk.Tk):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 3 and sys.argv[1] == "--silent-update":
-        run_silent_update(sys.argv[2])
-    else:
-        InstallerApp().mainloop()
+    InstallerApp().mainloop()

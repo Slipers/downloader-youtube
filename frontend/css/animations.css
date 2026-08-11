@@ -1,16 +1,22 @@
 @keyframes float-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(6vw, 4vh) scale(1.08); }
-  66% { transform: translate(-4vw, 6vh) scale(0.94); }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--blob-op); }
+  25% { transform: translate(9vw, 6vh) scale(1.15); }
+  50% { transform: translate(3vw, 11vh) scale(0.92); opacity: calc(var(--blob-op) * 1.3); }
+  75% { transform: translate(-7vw, 3vh) scale(1.05); }
 }
 @keyframes float-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-7vw, -5vh) scale(1.1); }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--blob-op); }
+  30% { transform: translate(-10vw, -7vh) scale(1.18); opacity: calc(var(--blob-op) * 1.25); }
+  60% { transform: translate(-4vw, 6vh) scale(0.9); }
 }
 @keyframes float-c {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  40% { transform: translate(-5vw, 5vh) scale(0.9); }
-  70% { transform: translate(4vw, -4vh) scale(1.05); }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--blob-op); }
+  35% { transform: translate(-8vw, 8vh) scale(0.85); }
+  65% { transform: translate(7vw, -7vh) scale(1.2); opacity: calc(var(--blob-op) * 1.3); }
+}
+@keyframes hue-drift {
+  0%, 100% { filter: blur(70px) hue-rotate(0deg); }
+  50% { filter: blur(70px) hue-rotate(18deg); }
 }
 
 @keyframes spin {

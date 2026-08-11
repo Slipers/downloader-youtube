@@ -101,9 +101,9 @@ body {
   will-change: transform;
 }
 
-.blob-a { width: 46vw; height: 46vw; background: var(--accent); top: -12%; left: -8%; animation: float-a 22s ease-in-out infinite; }
-.blob-b { width: 38vw; height: 38vw; background: var(--accent-2); bottom: -14%; right: -6%; animation: float-b 26s ease-in-out infinite; }
-.blob-c { width: 28vw; height: 28vw; background: var(--accent-3); top: 40%; left: 55%; animation: float-c 30s ease-in-out infinite; }
+.blob-a { width: 46vw; height: 46vw; background: var(--accent); top: -12%; left: -8%; animation: float-a 14s ease-in-out infinite, hue-drift 17s ease-in-out infinite; }
+.blob-b { width: 38vw; height: 38vw; background: var(--accent-2); bottom: -14%; right: -6%; animation: float-b 16s ease-in-out infinite, hue-drift 21s ease-in-out infinite; }
+.blob-c { width: 28vw; height: 28vw; background: var(--accent-3); top: 40%; left: 55%; animation: float-c 18s ease-in-out infinite, hue-drift 25s ease-in-out infinite; }
 
 /* ---------- Top bar (settings + theme) ---------- */
 .topbar {
@@ -153,15 +153,20 @@ body {
   inset: 0;
   display: flex;
   align-items: center;
+  /* When content is taller than the window, plain `center` starts it
+     scrolled to the middle -- `safe center` falls back to flex-start so the
+     top (title/recap) is visible first, only centering when there's room.
+     Declared as a second line so engines without "safe" keep the fallback
+     above instead of dropping the whole rule. */
+  align-items: safe center;
   justify-content: center;
   padding: 40px 24px;
+  overflow-y: auto;
   opacity: 0;
   visibility: hidden;
   transform: translateY(24px) scale(.98);
   transition: opacity .5s var(--ease), transform .55s var(--ease), visibility 0s linear .55s;
   z-index: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
 }
 .screen.active {
   opacity: 1;
@@ -305,7 +310,7 @@ body {
 .card {
   position: relative;
   width: 100%;
-  max-width: clamp(380px, 44vw, 460px);
+  max-width: 460px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -313,7 +318,7 @@ body {
   backdrop-filter: blur(22px);
   box-shadow: var(--shadow-lg);
 }
-.card-wide { max-width: clamp(700px, 84vw, 960px); padding: 28px 32px 26px; }
+.card-wide { max-width: 860px; padding: 28px 32px 26px; }
 .card h2 { margin: 0 0 8px; font-size: 24px; font-weight: 750; letter-spacing: -0.01em; }
 .subtitle { color: var(--text-1); font-size: 14.5px; margin: 0 0 26px; line-height: 1.5; }
 
@@ -344,6 +349,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 
 /* ---------- URL field ---------- */
 .url-field {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -358,6 +364,71 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.15);
 }
 .url-field-icon { width: 22px; height: 22px; color: #ff0033; flex-shrink: 0; }
+/* [hidden] on an inline <svg> isn't reliably display:none by default in every
+   engine (unlike plain HTML elements) -- state it explicitly. */
+.url-field-icon[hidden] { display: none; }
+#platform-icon-tiktok { color: #25f4ee; }
+
+.platform-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  margin: -4px 0 -4px -4px;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.platform-picker-btn:hover { background: var(--surface); }
+.platform-picker-caret { width: 12px; height: 12px; color: var(--text-2); flex-shrink: 0; }
+
+/* Scoped to :not([hidden]) -- an unconditional `display: flex` here would
+   outrank the native [hidden] UA default (same bug class as the popup's
+   state divs) and the menu would never actually close. */
+.platform-picker-menu[hidden] { display: none; }
+.platform-picker-menu:not([hidden]) {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 12px;
+  min-width: 170px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: ytdls-state-in-local 0.18s var(--ease);
+}
+@keyframes ytdls-state-in-local {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.platform-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  color: var(--text-1);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s;
+}
+.platform-option:hover { background: var(--surface); color: var(--text-0); }
+.platform-option.active { background: var(--surface-strong); color: var(--text-0); }
+.platform-option-icon { width: 18px; height: 18px; flex-shrink: 0; color: #ff0033; }
+.platform-option[data-platform="tiktok"] .platform-option-icon { color: #25f4ee; }
 .url-field input[type="text"] {
   border: none;
   background: transparent;
@@ -785,29 +856,6 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 }
 .settings-cookiefile-actions { display: flex; gap: 8px; margin-top: 8px; }
 .settings-cookiefile-actions .btn-secondary { padding: 9px 16px; font-size: 13px; }
-
-/* ---------- Tutorial modal ---------- */
-.tutorial-modal { max-width: 440px; text-align: center; }
-.tutorial-slide { display: none; }
-.tutorial-slide.active { display: block; animation: fade-in-up .4s var(--ease); }
-.tutorial-icon {
-  width: 64px; height: 64px; margin: 0 auto 18px;
-  border-radius: 50%;
-  background: var(--accent-grad);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-}
-.tutorial-icon svg { width: 30px; height: 30px; }
-.tutorial-slide h3 { margin: 0 0 10px; font-size: 18px; }
-.tutorial-slide .modal-meta { margin: 0 auto; max-width: 340px; }
-.tutorial-dots { display: flex; justify-content: center; gap: 7px; margin: 26px 0 28px; }
-.tutorial-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--border); border: none; padding: 0; cursor: pointer;
-  transition: background .25s var(--ease), transform .25s var(--ease);
-}
-.tutorial-dot.active { background: var(--accent-grad); transform: scale(1.3); }
-.tutorial-modal .modal-actions { margin-top: 4px; }
 .settings-number { display: flex; align-items: center; gap: 6px; color: var(--text-1); font-size: 13px; font-weight: 600; }
 .settings-number input[type="number"] {
   width: 56px; text-align: center;
@@ -843,36 +891,139 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   pointer-events: none;
 }
 
-/* ---------- Responsive: narrower windows ---------- */
-@media (max-width: 1040px) {
-  .options-grid { gap: 8px 20px; }
-  .export-card { font-size: 11px; padding: 10px 4px; }
-  .pill-btn { font-size: 12px; padding: 8px 5px; }
-}
-
-@media (max-width: 900px) {
+@media (max-width: 560px) {
   .options-grid { grid-template-columns: 1fr; }
-  .screen { padding: 32px 18px; }
+  .card, .card-wide { padding: 26px 20px 24px; }
 }
 
-/* ---------- Responsive: shorter windows ---------- */
-@media (max-height: 800px) {
-  .screen { padding: 22px 24px; }
-  .card { padding-top: 26px; padding-bottom: 24px; }
-  .card-wide { padding-top: 20px; padding-bottom: 18px; }
-  .card h2 { font-size: 21px; }
-  .video-recap { margin-bottom: 10px; padding: 8px 10px; }
-  .options-grid { gap: 6px 24px; margin-bottom: 14px; }
-  .options-col { gap: 11px; }
-  .option-label { margin-bottom: 6px; }
-  .preview-panel { margin: 12px 0; }
-  .steps { gap: 10px; margin-bottom: 18px; }
+/* ---------- Extension settings ---------- */
+.browser-list { display: flex; flex-direction: column; gap: 10px; }
+.browser-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.browser-row-icon {
+  width: 28px; height: 28px; flex: none;
+  border-radius: 8px;
+  background: var(--accent-grad);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 700;
+}
+.browser-row-name { flex: 1; font-size: 13.5px; font-weight: 600; }
+.browser-row .btn-secondary { padding: 8px 16px; font-size: 12.5px; white-space: nowrap; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 16px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-0);
+  font-size: 13.5px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Extension install instructions ---------- */
+.ext-install-steps {
+  margin: 14px 0 4px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13.5px;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+.ext-install-steps li { padding-left: 2px; }
+.copy-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.copy-field code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-0);
+}
+.btn-copy-small { padding: 8px 14px; font-size: 12.5px; flex: none; }
+
+/* ---------- App / extension update ---------- */
+.update-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
 }
 
-@media (max-height: 680px) {
-  .screen { padding: 14px 24px; }
-  .card, .card-wide { padding-top: 16px; padding-bottom: 14px; }
-  .subtitle { margin-bottom: 14px; }
-  .options-grid { gap: 4px 20px; margin-bottom: 10px; }
-  .options-col { gap: 8px; }
+.update-version {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.update-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: ytdls-spin 0.8s linear infinite;
+  margin: 0 auto 4px;
+}
+
+@keyframes ytdls-spin {
+  to { transform: rotate(360deg); }
+}
+
+.extension-update-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+  background: linear-gradient(135deg, rgba(255, 51, 102, 0.12), rgba(124, 92, 255, 0.12));
+  font-size: 12.5px;
+  color: var(--text-0);
+}
+
+.extension-update-row .btn-secondary { padding: 8px 16px; font-size: 12.5px; flex: none; }
+.toast::before {
+  content: "";
+  width: 18px; height: 18px; flex: none;
+  border-radius: 50%;
+  background: var(--accent-grad);
 }

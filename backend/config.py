@@ -1,12 +1,23 @@
 """Persisted app settings (theme, last download folder, ffmpeg location)."""
 import json
+import sys
 from pathlib import Path
+
+BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
 
 APP_DIR = Path.home() / "AppData" / "Local" / "DownloaderYoutubeer"
 SETTINGS_FILE = APP_DIR / "settings.json"
 FFMPEG_DIR = APP_DIR / "ffmpeg"
 
 DEFAULT_DOWNLOAD_DIR = Path.home() / "Downloads" / "YouTube"
+
+# ---- browser extension ------------------------------------------------
+EXTENSION_ID = "fclpcgadpekfhgmjimnekigfhkejhdmk"
+LINK_SERVER_PORT = 47990
+EXTENSION_SRC_DIR = BASE_DIR / "extension"
+EXTENSION_INSTALL_DIR = APP_DIR / "extension"
+EXTENSION_BUILD_DIR = EXTENSION_INSTALL_DIR / "build"
+EXTENSION_CRX_PATH = EXTENSION_BUILD_DIR / "extension.crx"
 
 DEFAULTS = {
     "theme": None,  # None => follow OS preference on first run
@@ -19,7 +30,8 @@ DEFAULTS = {
     "last_output_format": None,
     "confetti_seconds": 5,
     "cookies_file": None,
-    "tutorial_seen": False,
+    "paired": False,
+    "pairing_token": None,
 }
 
 

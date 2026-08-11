@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Downloader Youtube</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <div class="popup-header">
+      <img src="icons/icon48.png" alt="" class="popup-logo">
+      <div>
+        <p class="popup-title">Downloader <span class="accent">Youtube</span></p>
+        <p class="popup-subtitle">Extension de liaison</p>
+      </div>
+    </div>
+
+    <div id="state-idle" class="popup-state">
+      <p class="popup-text">Liez cette extension à l'application pour télécharger vos vidéos en un clic depuis YouTube.</p>
+      <button id="btn-link" class="btn-primary">Lier</button>
+    </div>
+
+    <div id="state-linking" class="popup-state" hidden>
+      <ol class="steps" id="link-steps">
+        <li data-step="detect" class="step"><span class="step-dot"></span><span class="step-label">Recherche de l'application</span></li>
+        <li data-step="connect" class="step"><span class="step-dot"></span><span class="step-label">Connexion en cours</span></li>
+        <li data-step="finish" class="step"><span class="step-dot"></span><span class="step-label">Finalisation</span></li>
+      </ol>
+    </div>
+
+    <div id="state-error" class="popup-state" hidden>
+      <div class="result-icon result-icon-error">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path class="draw-path" d="M6 6l12 12"/>
+          <path class="draw-path draw-path-2" d="M18 6L6 18"/>
+        </svg>
+      </div>
+      <p class="popup-text">Application non détectée. Ouvrez Downloader Youtube puis réessayez.</p>
+      <button id="btn-retry" class="btn-secondary">Réessayer</button>
+    </div>
+
+    <div id="state-linked" class="popup-state" hidden>
+      <div class="result-icon result-icon-success">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path class="draw-path" d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+      <p class="popup-text">Extension liée à Downloader Youtube.</p>
+      <p class="popup-hint">Cliquez sur « Télécharger » à côté d'une vidéo YouTube pour lancer un téléchargement.</p>
+      <button id="btn-unlink" class="btn-secondary">Délier</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

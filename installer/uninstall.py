@@ -30,6 +30,15 @@ def main():
     if not proceed:
         return
 
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "DownloaderYoutube.exe"],
+            capture_output=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    except OSError:
+        pass
+
     start_menu = Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs" / f"{APP_NAME}.lnk"
     desktop = Path(os.environ["USERPROFILE"]) / "Desktop" / f"{APP_NAME}.lnk"
     remove_shortcut(start_menu)

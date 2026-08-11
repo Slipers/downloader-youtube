@@ -1,0 +1,260 @@
+:root {
+  --bg-0: #0b0c10;
+  --bg-1: #12141a;
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-strong: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.1);
+  --text-0: #f5f6fa;
+  --text-1: #b7bacb;
+  --text-2: #7d8195;
+  --accent: #ff3366;
+  --accent-2: #7c5cff;
+  --accent-grad: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --error: #ef4444;
+  --error-grad: linear-gradient(135deg, #ef4444, #f97316);
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  width: 300px;
+  font-family: -apple-system, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg-0);
+  color: var(--text-0);
+  overflow-x: hidden;
+}
+
+.popup {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.popup-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.popup-title .accent {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.popup-subtitle {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+/* `.popup-state` is scoped to :not([hidden]) so the native [hidden] default
+   (display:none) actually wins -- an unconditional `display:flex` rule here
+   would otherwise outrank it and every state would render stacked at once. */
+.popup-state[hidden] { display: none; }
+.popup-state:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 6px 2px 2px;
+  animation: ytdls-state-in 0.4s var(--ease);
+}
+
+@keyframes ytdls-state-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.popup-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+
+.popup-hint {
+  margin: -6px 0 0;
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.btn-primary,
+.btn-secondary {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s;
+}
+
+.btn-primary {
+  color: #fff;
+  background: var(--accent-grad);
+  box-shadow: 0 10px 22px -10px rgba(255, 51, 102, 0.55);
+}
+
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+
+.btn-secondary {
+  color: var(--text-0);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { background: var(--surface-strong); }
+.btn-secondary:active { transform: scale(0.98); }
+
+/* ---------- linking steps ---------- */
+.steps {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  position: relative;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  padding: 5px 0;
+  transition: color 0.3s var(--ease);
+}
+
+.step-dot {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  position: relative;
+  transition: border-color 0.3s var(--ease), background 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+/* connecting line between dots, filling in as steps complete */
+.step:not(:last-child) .step-dot::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  margin-top: 3px;
+  transform: translateX(-50%);
+  background: var(--border);
+  transition: background 0.4s var(--ease);
+}
+
+.step.done:not(:last-child) .step-dot::before { background: var(--accent-2); }
+
+.step.active { color: var(--text-0); }
+
+.step.active .step-dot {
+  border-color: transparent;
+  background: var(--accent-grad);
+  transform: scale(1.15);
+  animation: ytdls-pulse 1s ease-in-out infinite;
+}
+
+.step.done { color: var(--text-0); }
+
+.step.done .step-dot {
+  border-color: transparent;
+  background: var(--accent-grad);
+  transform: scale(1);
+}
+
+.step.done .step-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 5px;
+  height: 8px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg) translate(-1px, -1px);
+  animation: ytdls-check-pop 0.3s var(--ease);
+}
+
+@keyframes ytdls-check-pop {
+  from { opacity: 0; transform: rotate(45deg) translate(-1px, -1px) scale(0.4); }
+  to { opacity: 1; transform: rotate(45deg) translate(-1px, -1px) scale(1); }
+}
+
+@keyframes ytdls-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 51, 102, 0); }
+}
+
+/* ---------- animated result icon (success check / error cross) ---------- */
+.result-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  animation: ytdls-icon-pop 0.45s var(--ease);
+}
+
+.result-icon-success { background: var(--accent-grad); }
+.result-icon-error { background: var(--error-grad); animation: ytdls-icon-pop 0.45s var(--ease), ytdls-shake 0.5s 0.45s var(--ease); }
+
+.result-icon .draw-path {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: ytdls-draw 0.35s 0.2s var(--ease) forwards;
+}
+
+.result-icon .draw-path-2 { animation-delay: 0.32s; }
+
+@keyframes ytdls-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ytdls-icon-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { opacity: 1; transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ytdls-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}

@@ -90,20 +90,40 @@ const Api = {
     await apiReady;
     return window.pywebview.api.cancel_download();
   },
+  async getExtensionStatus() {
+    await apiReady;
+    return window.pywebview.api.get_extension_status();
+  },
+  async listBrowsers() {
+    await apiReady;
+    return window.pywebview.api.list_browsers();
+  },
+  async installExtension(browserId) {
+    await apiReady;
+    return window.pywebview.api.install_extension(browserId);
+  },
+  async launchBrowser(browserId) {
+    await apiReady;
+    return window.pywebview.api.launch_browser(browserId);
+  },
+  async getAppVersion() {
+    await apiReady;
+    return window.pywebview.api.get_app_version();
+  },
   async checkForUpdate() {
     await apiReady;
     return window.pywebview.api.check_for_update();
   },
-  async downloadUpdate(url) {
+  async startAppUpdate(updateInfo) {
     await apiReady;
-    return window.pywebview.api.download_update(url);
+    return window.pywebview.api.start_app_update(updateInfo);
   },
-  async installUpdate(path) {
+  async checkExtensionUpdate() {
     await apiReady;
-    return window.pywebview.api.install_update(path);
+    return window.pywebview.api.check_extension_update();
   },
-  async markTutorialSeen() {
+  async updateExtensionFiles() {
     await apiReady;
-    return window.pywebview.api.mark_tutorial_seen();
+    return window.pywebview.api.update_extension_files();
   },
 };

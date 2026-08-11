@@ -1,12 +1,24 @@
+# Private extension signing key -- never publish this.
+backend/keys/
+
+# Build artifacts (rebuilt from source; installer/update zip go to Releases, not the repo).
+dist/
+dist_installer/
+dist_uninstall/
+build/
+*.spec
+DownloaderYoutubeSetup.exe
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 .venv/
 venv/
-build/
-dist/
-*.spec
-DownloaderYoutubeSetup.exe
 *.egg-info/
+
+# Editors
 .vscode/
 .idea/
+
+*.log

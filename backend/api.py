@@ -3,24 +3,23 @@ import json
 import os
 import re
 import shutil
-import subprocess
-import sys
-import tempfile
 import threading
 import time
-import urllib.request
 from pathlib import Path
 
 import webview
 from yt_dlp.utils import DownloadCancelled
 
-from . import config, downloader, ffmpeg_manager, version
+from . import browsers, config, downloader, extension_installer, ffmpeg_manager, updater, window_utils
 
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
 )
+TIKTOK_URL_RE = re.compile(r"^https?://(www\.|vm\.|vt\.|m\.)?tiktok\.com/")
+SUPPORTED_URL_PATTERNS = (YOUTUBE_URL_RE, TIKTOK_URL_RE)
 
 COOKIES_FILE_PATH = config.APP_DIR / "imported_cookies.txt"
+WINDOW_TITLE = "Downloader Youtube"
 
 
 class Api:
@@ -47,12 +46,7 @@ class Api:
         settings["fps_choices"] = downloader.FPS_CHOICES
         settings["video_containers"] = downloader.VIDEO_CONTAINERS
         settings["audio_formats"] = downloader.AUDIO_FORMATS
-        settings["current_version"] = version.CURRENT_VERSION
         return settings
-
-    def mark_tutorial_seen(self):
-        config.save_settings({"tutorial_seen": True})
-        return True
 
     def save_theme(self, theme: str):
         config.save_settings({"theme": theme})
@@ -118,11 +112,12 @@ class Api:
 
     # ---- video metadata -------------------------------------------------
     def is_valid_youtube_url(self, url: str):
-        return bool(url and YOUTUBE_URL_RE.match(url.strip()))
+        url = (url or "").strip()
+        return bool(url and any(pattern.match(url) for pattern in SUPPORTED_URL_PATTERNS))
 
     def fetch_video_info(self, url: str):
         if not self.is_valid_youtube_url(url):
-            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube valide."}
+            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube ou TikTok valide."}
         try:
             info = downloader.get_video_info(url.strip(), cookies_file=self._cookies_file())
             return {"ok": True, "data": info}
@@ -185,66 +180,6 @@ class Api:
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
-    # ---- auto-update ------------------------------------------------------
-    def check_for_update(self):
-        try:
-            req = urllib.request.Request(
-                version.GITHUB_LATEST_RELEASE_API,
-                headers={"Accept": "application/vnd.github+json", "User-Agent": "DownloaderYoutube"},
-            )
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-
-            tag = data.get("tag_name", "")
-            if not tag or not version.is_newer(tag):
-                return {"available": False}
-
-            asset = next(
-                (a for a in data.get("assets", []) if a.get("name") == version.INSTALLER_ASSET_NAME),
-                None,
-            )
-            if not asset:
-                return {"available": False}
-
-            return {
-                "available": True,
-                "version": tag.lstrip("vV"),
-                "download_url": asset["browser_download_url"],
-                "size": asset.get("size"),
-                "notes": (data.get("body") or "").strip(),
-            }
-        except Exception:
-            return {"available": False}
-
-    def download_update(self, download_url: str):
-        try:
-            dest = Path(tempfile.gettempdir()) / version.INSTALLER_ASSET_NAME
-
-            def _report(block_num, block_size, total_size):
-                if total_size > 0:
-                    percent = min(100, int(block_num * block_size * 100 / total_size))
-                    self._push("update_download_progress", {"percent": percent})
-
-            urllib.request.urlretrieve(download_url, dest, reporthook=_report)
-            return {"ok": True, "path": str(dest)}
-        except Exception as exc:
-            return {"ok": False, "error": str(exc)}
-
-    def install_update(self, installer_path: str):
-        if not getattr(sys, "frozen", False):
-            return {"ok": False, "error": "La mise à jour automatique n'est disponible que pour la version installée."}
-        install_dir = Path(sys.executable).resolve().parent
-        try:
-            subprocess.Popen(
-                [installer_path, "--silent-update", str(install_dir)],
-                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
-                close_fds=True,
-            )
-        except OSError as exc:
-            return {"ok": False, "error": str(exc)}
-        threading.Timer(0.6, lambda: os._exit(0)).start()
-        return {"ok": True}
-
     # ---- download -------------------------------------------------------
     def start_download(self, url: str, options: dict):
         self._cancel_event = threading.Event()
@@ -285,3 +220,79 @@ class Api:
             self._push("download_cancelled", {})
         except Exception as exc:
             self._push("download_error", {"error": self._friendly_error(exc)})
+
+    # ---- browser extension ------------------------------------------------
+    def get_extension_status(self):
+        settings = config.load_settings()
+        return {"paired": bool(settings.get("paired"))}
+
+    def list_browsers(self):
+        return browsers.detect_browsers()
+
+    def install_extension(self, browser_id: str):
+        return extension_installer.install_extension(browser_id)
+
+    def launch_browser(self, browser_id: str):
+        return browsers.launch_browser(browser_id)
+
+    def on_extension_linked(self):
+        """Called from the link-server thread when the extension pairs."""
+        window_utils.focus_window(WINDOW_TITLE)
+        self._push("extension_linked", {})
+
+    def on_open_download(self, url: str):
+        """Called from the link-server thread when the extension's download button is clicked."""
+        window_utils.focus_window(WINDOW_TITLE)
+        self._push("open_download", {"url": url})
+
+    # ---- app / extension updates -------------------------------------------
+    def get_app_version(self):
+        return updater.APP_VERSION
+
+    def check_for_update(self):
+        return updater.check_for_update()
+
+    def start_app_update(self, update_info: dict):
+        threading.Thread(target=self._run_update, args=(update_info,), daemon=True).start()
+        return {"started": True}
+
+    def _run_update(self, update_info: dict):
+        try:
+            def on_progress(percent):
+                self._push("update_progress", {"percent": percent})
+
+            self._push("update_installing", {})
+            updater.apply_update_and_restart(update_info, on_progress)
+            time.sleep(0.5)
+            if self.window:
+                self.window.destroy()
+        except Exception as exc:
+            self._push("update_error", {"error": str(exc)})
+
+    def sync_extension_if_outdated(self):
+        """Called once at startup: if this build ships a newer extension than
+        what's synced on disk (e.g. right after an app update), refresh it
+        silently and let the user know a browser-side reload is needed."""
+        result = self.check_extension_update()
+        if result.get("available"):
+            extension_installer.sync_only()
+            self._push("extension_auto_synced", {"version": result["version"]})
+
+    def check_extension_update(self):
+        try:
+            bundled_version = json.loads(
+                (config.EXTENSION_SRC_DIR / "manifest.json").read_text(encoding="utf-8")
+            ).get("version", "0")
+            installed_path = config.EXTENSION_INSTALL_DIR / "manifest.json"
+            if not installed_path.exists():
+                return {"available": False}
+            installed_version = json.loads(installed_path.read_text(encoding="utf-8")).get("version", "0")
+        except (OSError, json.JSONDecodeError):
+            return {"available": False}
+
+        if updater.parse_version(bundled_version) > updater.parse_version(installed_version):
+            return {"available": True, "version": bundled_version, "current_version": installed_version}
+        return {"available": False}
+
+    def update_extension_files(self):
+        return extension_installer.sync_only()

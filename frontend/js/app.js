@@ -2,6 +2,17 @@
 
 const QUALITY_ORDER = ["auto", "144p", "480p", "720p", "1080p", "1440p", "2160p"];
 const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]+/i;
+const TIKTOK_URL_RE = /^https?:\/\/(www\.|vm\.|vt\.|m\.)?tiktok\.com\//i;
+
+const PLATFORM_URL_RE = { youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE };
+const PLATFORM_PLACEHOLDER = {
+  youtube: "https://www.youtube.com/watch?v=...",
+  tiktok: "https://www.tiktok.com/@utilisateur/video/...",
+};
+const PLATFORM_SUBTITLE = {
+  youtube: "Copiez l'URL YouTube de la vidéo que vous souhaitez télécharger.",
+  tiktok: "Copiez l'URL TikTok de la vidéo que vous souhaitez télécharger.",
+};
 
 const state = {
   settings: null,
@@ -12,6 +23,7 @@ const state = {
   recommendedAudioKbps: 192,
   confettiSeconds: 5,
   url: "",
+  platform: "youtube",
   videoInfo: null,
   quality: "1080p",
   fps: "auto",
@@ -21,6 +33,7 @@ const state = {
   bitrate: 0,
   destDir: "",
   showPreview: true,
+  viaExtension: false,
 };
 
 let cancelRequested = false;
@@ -133,6 +146,17 @@ function initSettingsModal() {
     btn.disabled = false;
   });
 
+  $("settings-toggle").addEventListener("click", refreshExtensionSettings);
+  $("btn-update-extension").addEventListener("click", async () => {
+    const btn = $("btn-update-extension");
+    btn.disabled = true;
+    btn.textContent = "Mise à jour…";
+    await Api.updateExtensionFiles();
+    $("extension-update-row").hidden = true;
+    showToast("Extension mise à jour — rechargez-la (icône ↻ dans la page des extensions) puis actualisez YouTube.");
+    btn.disabled = false;
+    btn.textContent = "Mettre à jour";
+  });
   $("settings-toggle").addEventListener("click", refreshCookiesFileStatus);
   $("btn-import-cookies").addEventListener("click", async () => {
     const btn = $("btn-import-cookies");
@@ -180,6 +204,167 @@ async function refreshFfmpegStatus() {
   }
 }
 
+/* ---------- toast ---------- */
+let toastTimer = null;
+function showToast(text, durationMs = 3200) {
+  const toast = $("toast");
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), durationMs);
+}
+
+/* ---------- extension settings ---------- */
+async function refreshExtensionSettings() {
+  const statusText = $("extension-status-text");
+  const list = $("browser-list");
+  statusText.textContent = "Vérification…";
+
+  const [status, browserList, extUpdate] = await Promise.all([
+    Api.getExtensionStatus(), Api.listBrowsers(), Api.checkExtensionUpdate(),
+  ]);
+  statusText.textContent = status.paired
+    ? "Extension liée ✓"
+    : "Non liée — installez l'extension puis cliquez « Lier » dans son menu.";
+
+  const updateRow = $("extension-update-row");
+  if (extUpdate.available) {
+    $("extension-update-text").textContent = `Nouvelle version de l'extension disponible (v${extUpdate.version}).`;
+    updateRow.hidden = false;
+  } else {
+    updateRow.hidden = true;
+  }
+
+  list.innerHTML = "";
+  if (!browserList.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint-text";
+    empty.textContent = "Aucun navigateur Chromium détecté sur cet ordinateur.";
+    list.appendChild(empty);
+    return;
+  }
+
+  browserList.forEach((browser) => {
+    const row = document.createElement("div");
+    row.className = "browser-row";
+    row.innerHTML = `
+      <div class="browser-row-icon">${browser.name.charAt(0)}</div>
+      <div class="browser-row-name">${browser.name}</div>
+    `;
+    const btn = document.createElement("button");
+    btn.className = "btn-secondary";
+    btn.textContent = "Installer";
+    btn.addEventListener("click", () => onInstallBrowser(browser, btn));
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+async function onInstallBrowser(browser, btn) {
+  btn.disabled = true;
+  btn.textContent = "Préparation…";
+
+  const result = await Api.installExtension(browser.id);
+
+  if (!result.ok) {
+    btn.textContent = "Échec";
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Installer"; }, 3000);
+    return;
+  }
+
+  $("ext-install-browser-name").textContent = result.browser;
+  $("ext-install-url").textContent = result.extensions_url;
+  $("ext-install-path").textContent = result.install_dir;
+  $("modal-extension-install").dataset.browserId = browser.id;
+  openModal("modal-extension-install");
+  Api.launchBrowser(browser.id);
+
+  btn.disabled = false;
+  btn.textContent = "Réinstaller";
+}
+
+/* ---------- app update ---------- */
+let pendingUpdateInfo = null;
+
+function initAppUpdateModal() {
+  $("update-decline").addEventListener("click", () => closeModal("modal-app-update"));
+  $("update-error-close").addEventListener("click", () => closeModal("modal-app-update"));
+  $("update-accept").addEventListener("click", onAcceptUpdate);
+}
+
+async function checkForUpdateOnStartup() {
+  let result;
+  try {
+    result = await Api.checkForUpdate();
+  } catch (err) {
+    return;
+  }
+  if (!result?.available) return;
+
+  pendingUpdateInfo = result;
+  $("update-ask").hidden = false;
+  $("update-downloading").hidden = true;
+  $("update-installing").hidden = true;
+  $("update-error").hidden = true;
+  $("update-version-label").textContent = `v${result.version}`;
+  $("update-notes").textContent =
+    (result.notes || "Une nouvelle version est disponible.") +
+    " L'extension sera mise à jour avec l'application (un rechargement dans le navigateur restera nécessaire).";
+  openModal("modal-app-update");
+}
+
+async function onAcceptUpdate() {
+  if (!pendingUpdateInfo) return;
+  $("update-ask").hidden = true;
+  $("update-downloading").hidden = false;
+  $("update-progress-fill").style.width = "0%";
+  $("update-progress-label").textContent = "0%";
+
+  const progressHandler = (payload) => {
+    if (payload.percent >= 0) {
+      $("update-progress-fill").style.width = `${payload.percent}%`;
+      $("update-progress-label").textContent = `${payload.percent}%`;
+    }
+  };
+  const installingHandler = () => {
+    $("update-downloading").hidden = true;
+    $("update-installing").hidden = false;
+  };
+  const errorHandler = (payload) => {
+    Api.off("update_progress", progressHandler);
+    Api.off("update_installing", installingHandler);
+    Api.off("update_error", errorHandler);
+    $("update-downloading").hidden = true;
+    $("update-installing").hidden = true;
+    $("update-error").hidden = false;
+    $("update-error-text").textContent = payload.error;
+  };
+  Api.on("update_progress", progressHandler);
+  Api.on("update_installing", installingHandler);
+  Api.on("update_error", errorHandler);
+
+  await Api.startAppUpdate(pendingUpdateInfo);
+}
+
+function initExtensionInstallModal() {
+  $("ext-install-close").addEventListener("click", () => closeModal("modal-extension-install"));
+  $("ext-install-open-browser").addEventListener("click", () => {
+    const browserId = $("modal-extension-install").dataset.browserId;
+    if (browserId) Api.launchBrowser(browserId);
+  });
+  document.querySelectorAll(".btn-copy-small").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const target = $(btn.dataset.copyTarget);
+      try {
+        await navigator.clipboard.writeText(target.textContent);
+        const original = btn.textContent;
+        btn.textContent = "Copié !";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      } catch (err) { /* ignore */ }
+    });
+  });
+}
+
 /* ---------- start -> url ---------- */
 function initStartScreen() {
   $("btn-start").addEventListener("click", () => {
@@ -188,18 +373,52 @@ function initStartScreen() {
   });
 }
 
+function setPlatform(platform) {
+  state.platform = platform;
+  // `.hidden` as a JS property is unreliable on <svg> elements in some engines
+  // (only the HTML-specific mixin reliably supports it) -- toggleAttribute
+  // works on any Element and correctly reflects to the [hidden] CSS selector.
+  $("platform-icon-youtube").toggleAttribute("hidden", platform !== "youtube");
+  $("platform-icon-tiktok").toggleAttribute("hidden", platform !== "tiktok");
+  $("url-input").placeholder = PLATFORM_PLACEHOLDER[platform];
+  $("url-screen-subtitle").textContent = PLATFORM_SUBTITLE[platform];
+  document.querySelectorAll(".platform-option").forEach((opt) => {
+    opt.classList.toggle("active", opt.dataset.platform === platform);
+  });
+  $("url-input").dispatchEvent(new Event("input"));
+}
+
+function initPlatformPicker() {
+  const btn = $("platform-picker-btn");
+  const menu = $("platform-picker-menu");
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  });
+  document.querySelectorAll(".platform-option").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      setPlatform(opt.dataset.platform);
+      menu.hidden = true;
+    });
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+}
+
 function initUrlScreen() {
   const input = $("url-input");
   const nextBtn = $("btn-url-next");
   input.addEventListener("input", () => {
     $("url-error").hidden = true;
-    nextBtn.disabled = !YT_URL_RE.test(input.value.trim());
+    nextBtn.disabled = !PLATFORM_URL_RE[state.platform].test(input.value.trim());
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !nextBtn.disabled) nextBtn.click();
   });
   nextBtn.addEventListener("click", () => {
     state.url = input.value.trim();
+    state.viaExtension = false;
     openConfirmModal(state.url);
   });
 
@@ -214,6 +433,8 @@ function initUrlScreen() {
       /* clipboard unavailable — ignore silently */
     }
   });
+
+  initPlatformPicker();
 
   document.querySelectorAll('[data-back]').forEach((btn) => {
     btn.addEventListener("click", () => showScreen(btn.dataset.back));
@@ -248,7 +469,7 @@ async function runFetchStagesAnimation(promise) {
   return result;
 }
 
-async function openConfirmModal(url) {
+async function openConfirmModal(url, options = {}) {
   resetConfirmModal();
   openModal("modal-confirm");
 
@@ -267,25 +488,44 @@ async function openConfirmModal(url) {
   const meta = [result.data.uploader, formatDuration(result.data.duration)].filter(Boolean).join(" • ");
   $("modal-meta").textContent = meta;
   $("modal-content").hidden = false;
+
+  if (options.autoConfirm) {
+    await sleep(550);
+    proceedToOptions();
+  }
+}
+
+function proceedToOptions() {
+  const modalEl = $("modal-confirm").querySelector(".modal");
+  modalEl.classList.add("flip-out");
+  setTimeout(() => {
+    closeModal("modal-confirm");
+    populateOptionsScreen();
+    showScreen("screen-options");
+    const card = $("options-card");
+    card.classList.remove("flip-in-playing");
+    void card.offsetWidth; // restart animation
+    card.classList.add("flip-in-playing");
+    card.addEventListener("animationend", () => card.classList.remove("flip-in-playing"), { once: true });
+  }, 360);
 }
 
 function initConfirmModal() {
   $("modal-cancel").addEventListener("click", () => closeModal("modal-confirm"));
   $("modal-error-back").addEventListener("click", () => closeModal("modal-confirm"));
-  $("modal-confirm-btn").addEventListener("click", () => {
-    const modalEl = $("modal-confirm").querySelector(".modal");
-    modalEl.classList.add("flip-out");
-    setTimeout(() => {
-      closeModal("modal-confirm");
-      populateOptionsScreen();
-      showScreen("screen-options");
-      const card = $("options-card");
-      card.classList.remove("flip-in-playing");
-      void card.offsetWidth; // restart animation
-      card.classList.add("flip-in-playing");
-      card.addEventListener("animationend", () => card.classList.remove("flip-in-playing"), { once: true });
-    }, 360);
-  });
+  $("modal-confirm-btn").addEventListener("click", proceedToOptions);
+}
+
+/* ---------- external "open + download" requests (browser extension) ---------- */
+function handleExternalDownload(url) {
+  closeModal("modal-settings");
+  showScreen("screen-url");
+  setPlatform("youtube");
+  $("url-input").value = url;
+  $("url-input").dispatchEvent(new Event("input"));
+  state.url = url;
+  state.viaExtension = true;
+  openConfirmModal(url, { autoConfirm: true });
 }
 
 /* ---------- options screen ---------- */
@@ -521,7 +761,10 @@ function populateOptionsScreen() {
   $("recap-meta").textContent = formatDuration(info.duration);
 
   state.quality = pickDefaultQuality();
-  state.exportType = state.settings.last_export_type || "video_audio";
+  // Clicking "Télécharger" on a YouTube video means the video -- ignore a
+  // remembered "audio only" from a previous, unrelated manual download so
+  // quality/fps controls aren't unexpectedly hidden.
+  state.exportType = state.viaExtension ? "video_audio" : (state.settings.last_export_type || "video_audio");
   state.outputFormat = state.settings.last_output_format || "mp4";
   const rememberedFps = state.settings.last_fps;
   if (rememberedFps && rememberedFps !== "auto" && !isNaN(Number(rememberedFps))) {
@@ -792,6 +1035,7 @@ function runDownload() {
     setStep("download", "done");
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
     showResult("success", "Téléchargement terminé", `Terminé en ${elapsed.toFixed(1)} s`, payload.filepath);
+    state.viaExtension = false;
   };
 
   const errorHandler = (payload) => {
@@ -799,6 +1043,7 @@ function runDownload() {
     settled = true;
     cleanup();
     showResult("error", "Échec du téléchargement", payload.error);
+    state.viaExtension = false;
   };
 
   const cancelledHandler = () => {
@@ -806,6 +1051,7 @@ function runDownload() {
     settled = true;
     cleanup();
     showResult("cancelled", "Téléchargement annulé", "Les fichiers temporaires ont été supprimés.");
+    state.viaExtension = false;
   };
 
   function cleanup() {
@@ -972,122 +1218,6 @@ function showResult(kind, title, text, filepath) {
   actions.appendChild(restartBtn);
 }
 
-/* ---------- tutorial (first run only) ---------- */
-function initTutorial() {
-  const slides = Array.from(document.querySelectorAll(".tutorial-slide"));
-  const dotsWrap = $("tutorial-dots");
-  let index = 0;
-
-  dotsWrap.innerHTML = "";
-  slides.forEach((_, i) => {
-    const dot = document.createElement("button");
-    dot.type = "button";
-    dot.className = "tutorial-dot";
-    dot.addEventListener("click", () => goTo(i));
-    dotsWrap.appendChild(dot);
-  });
-  const dots = Array.from(dotsWrap.children);
-
-  function render() {
-    slides.forEach((el, i) => el.classList.toggle("active", i === index));
-    dots.forEach((el, i) => el.classList.toggle("active", i === index));
-    $("tutorial-next").textContent = index === slides.length - 1 ? "Commencer" : "Suivant";
-  }
-
-  function goTo(i) {
-    index = Math.max(0, Math.min(slides.length - 1, i));
-    render();
-  }
-
-  return function showTutorial() {
-    return new Promise((resolve) => {
-      index = 0;
-      render();
-      openModal("modal-tutorial");
-
-      const finish = () => {
-        Api.markTutorialSeen();
-        closeModal("modal-tutorial");
-        $("tutorial-next").onclick = null;
-        $("tutorial-skip").onclick = null;
-        resolve();
-      };
-
-      $("tutorial-next").onclick = () => {
-        if (index === slides.length - 1) {
-          finish();
-        } else {
-          goTo(index + 1);
-        }
-      };
-      $("tutorial-skip").onclick = finish;
-    });
-  };
-}
-
-/* ---------- auto-update ---------- */
-let pendingUpdate = null;
-
-function resetUpdateModal() {
-  $("update-ask").hidden = false;
-  $("update-downloading").hidden = true;
-  $("update-restarting").hidden = true;
-  $("update-failed").hidden = true;
-  $("update-progress-fill").style.width = "0%";
-  $("update-progress-label").textContent = "0%";
-  $("update-install").disabled = false;
-}
-
-function initUpdateModal() {
-  $("update-later").addEventListener("click", () => closeModal("modal-update"));
-  $("update-failed-close").addEventListener("click", () => closeModal("modal-update"));
-
-  $("update-install").addEventListener("click", async () => {
-    if (!pendingUpdate) return;
-    $("update-install").disabled = true;
-    $("update-ask").hidden = true;
-    $("update-downloading").hidden = false;
-
-    const progressHandler = (payload) => {
-      const pct = payload.percent || 0;
-      $("update-progress-fill").style.width = `${pct}%`;
-      $("update-progress-label").textContent = `${pct}%`;
-    };
-    Api.on("update_download_progress", progressHandler);
-
-    const dl = await Api.downloadUpdate(pendingUpdate.download_url);
-    Api.off("update_download_progress", progressHandler);
-
-    if (!dl.ok) {
-      $("update-downloading").hidden = true;
-      $("update-failed").hidden = false;
-      $("update-error-text").textContent = dl.error || "Erreur inconnue lors du téléchargement.";
-      return;
-    }
-
-    $("update-downloading").hidden = true;
-    $("update-restarting").hidden = false;
-
-    const install = await Api.installUpdate(dl.path);
-    if (!install.ok) {
-      $("update-restarting").hidden = true;
-      $("update-failed").hidden = false;
-      $("update-error-text").textContent = install.error || "Erreur inconnue lors de l'installation.";
-    }
-    /* on success the app process exits itself; nothing left to do here */
-  });
-}
-
-async function checkForUpdateOnStartup() {
-  const result = await Api.checkForUpdate();
-  if (!result.available) return;
-  pendingUpdate = result;
-  resetUpdateModal();
-  $("update-version-text").textContent = `Version ${result.version} disponible.`;
-  $("update-notes").textContent = result.notes || "";
-  openModal("modal-update");
-}
-
 /* ---------- init ---------- */
 async function init() {
   initStartScreen();
@@ -1095,9 +1225,9 @@ async function init() {
   initConfirmModal();
   initOptionsScreen();
   initSettingsModal();
+  initExtensionInstallModal();
+  initAppUpdateModal();
   initStopButton();
-  initUpdateModal();
-  const showTutorial = initTutorial();
 
   const settings = await Api.getSettings();
   state.settings = settings;
@@ -1117,9 +1247,12 @@ async function init() {
 
   initTheme(settings.theme);
 
-  if (!settings.tutorial_seen) {
-    await showTutorial();
-  }
+  Api.on("extension_linked", () => showToast("Extension liée avec succès"));
+  Api.on("open_download", (payload) => handleExternalDownload(payload.url));
+  Api.on("extension_auto_synced", (payload) =>
+    showToast(`Extension mise à jour (v${payload.version}) — rechargez-la (icône ↻ dans la page des extensions) puis actualisez vos onglets YouTube.`, 12000)
+  );
+
   checkForUpdateOnStartup();
 }
 
