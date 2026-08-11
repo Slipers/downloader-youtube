@@ -370,11 +370,33 @@
     </div>
   </div>
 
+  <!-- Modal : choix du mode d'installation de l'extension -->
+  <div id="modal-extension-install-choice" class="modal-overlay">
+    <div class="modal">
+      <h3>Installer l'extension</h3>
+      <p class="modal-meta">Comment voulez-vous l'installer sur <strong id="ext-choice-browser-name">ce navigateur</strong> ?</p>
+      <div class="install-choice-list">
+        <button type="button" id="ext-choice-auto" class="install-choice-option">
+          <span class="install-choice-title">Automatique <span class="install-choice-badge">Recommandé</span></span>
+          <span class="install-choice-hint">L'application active le mode développeur et copie le dossier pour vous. Il ne reste qu'un clic sur « Charger l'extension non empaquetée ».</span>
+        </button>
+        <button type="button" id="ext-choice-manual" class="install-choice-option">
+          <span class="install-choice-title">Manuelle</span>
+          <span class="install-choice-hint">L'application ne touche pas au navigateur ; vous suivez chaque étape vous-même.</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button id="ext-choice-cancel" class="btn-secondary btn-full">Annuler</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal : instructions d'installation de l'extension -->
   <div id="modal-extension-install" class="modal-overlay">
     <div class="modal">
       <h3>Installer l'extension</h3>
-      <p class="modal-meta">Par sécurité, un navigateur ne peut pas être ouvert automatiquement sur une de ses pages internes depuis une autre application. Ces étapes prennent 30 secondes :</p>
+      <p class="modal-meta">Par sécurité, un navigateur ne peut pas être ouvert automatiquement sur une de ses pages internes depuis une autre application.</p>
+      <p class="modal-meta ext-install-auto-note" id="ext-install-auto-note" hidden>Mode développeur déjà activé et dossier déjà copié dans le presse-papiers — il ne reste que 2 clics.</p>
       <ol class="ext-install-steps">
         <li>
           <span>Ouvrez <strong id="ext-install-browser-name">le navigateur</strong>, puis collez cette adresse dans la barre d'adresse :</span>
@@ -383,7 +405,7 @@
             <button type="button" class="btn-secondary btn-copy-small" data-copy-target="ext-install-url">Copier</button>
           </div>
         </li>
-        <li>Activez « Mode développeur » (interrupteur en haut à droite de la page).</li>
+        <li id="ext-install-step-devmode">Activez « Mode développeur » (interrupteur en haut à droite de la page).</li>
         <li>Cliquez sur « Charger l'extension non empaquetée ».</li>
         <li>
           <span>Collez ce dossier dans la fenêtre qui s'ouvre :</span>

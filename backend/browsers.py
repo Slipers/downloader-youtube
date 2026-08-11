@@ -23,6 +23,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"Google\Chrome",
         "policy_supported": True,
+        "user_data_dir": rf"{LOCAL_APP_DATA}\Google\Chrome\User Data",
     },
     {
         "id": "edge",
@@ -33,6 +34,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"Microsoft\Edge",
         "policy_supported": True,
+        "user_data_dir": rf"{LOCAL_APP_DATA}\Microsoft\Edge\User Data",
     },
     {
         "id": "brave",
@@ -43,6 +45,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"BraveSoftware\Brave",
         "policy_supported": True,
+        "user_data_dir": rf"{LOCAL_APP_DATA}\BraveSoftware\Brave-Browser\User Data",
     },
     {
         "id": "vivaldi",
@@ -52,6 +55,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"Vivaldi",
         "policy_supported": False,
+        "user_data_dir": None,
     },
     {
         "id": "opera",
@@ -62,6 +66,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"Opera Software\Opera Stable",
         "policy_supported": False,
+        "user_data_dir": None,
     },
     {
         "id": "opera_gx",
@@ -72,6 +77,7 @@ BROWSER_DEFS = [
         ],
         "policy_key": r"Opera Software\Opera GX Stable",
         "policy_supported": False,
+        "user_data_dir": None,
     },
 ]
 
@@ -96,6 +102,7 @@ def detect_browsers() -> list[dict]:
                 "exe": exe,
                 "policy_key": definition["policy_key"],
                 "policy_supported": definition["policy_supported"],
+                "user_data_dir": definition["user_data_dir"],
             }
         )
     return found

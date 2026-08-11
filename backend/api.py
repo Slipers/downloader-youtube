@@ -191,8 +191,8 @@ class Api:
     def list_browsers(self):
         return browsers.detect_browsers()
 
-    def install_extension(self, browser_id: str):
-        return extension_installer.install_extension(browser_id)
+    def install_extension(self, browser_id: str, mode: str = "manual"):
+        return extension_installer.install_extension(browser_id, mode)
 
     def launch_browser(self, browser_id: str):
         return browsers.launch_browser(browser_id)

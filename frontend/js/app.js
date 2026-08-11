@@ -97,8 +97,50 @@ function showScreen(id) {
   });
 }
 
-function openModal(id) { $(id).classList.add("active"); }
+const MODAL_FIT_MIN_SCALE = 0.65;
+
+function fitModalToViewport(overlayId) {
+  const overlay = $(overlayId);
+  const modal = overlay && overlay.querySelector(".modal");
+  if (!modal) return;
+  // `zoom` changes the element's own rendered size from its parent's point
+  // of view (unlike `transform: scale`, which only affects paint -- the
+  // overlay's scrollable area would stay unchanged). But a zoomed element
+  // reports its OWN scrollHeight/offsetHeight in its own (zoomed-local)
+  // coordinate space, so there's no reliable formula from "natural size at
+  // zoom:1" straight to "the zoom factor that makes it fit". Binary-search
+  // it instead, measuring the overlay's real scrollHeight -- ground truth --
+  // after each attempt. Note scrollHeight can never read below clientHeight
+  // (that's its definition), so "fits" is exactly scrollHeight <= clientHeight
+  // -- not some margin below it, which would be an unreachable target.
+  modal.style.zoom = "1";
+  if (overlay.scrollHeight <= overlay.clientHeight) return;
+
+  let lo = MODAL_FIT_MIN_SCALE;
+  let hi = 1;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    modal.style.zoom = String(mid);
+    if (overlay.scrollHeight > overlay.clientHeight) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+  }
+  // lo is the largest tested scale confirmed to fit; back off a hair more
+  // as a sub-pixel-rounding safety margin.
+  modal.style.zoom = String(lo * 0.99);
+}
+
+function openModal(id) {
+  $(id).classList.add("active");
+  fitModalToViewport(id);
+}
 function closeModal(id) { $(id).classList.remove("active"); }
+
+window.addEventListener("resize", () => {
+  document.querySelectorAll(".modal-overlay.active").forEach((overlay) => fitModalToViewport(overlay.id));
+});
 
 /* ---------- theme ---------- */
 function applyTheme(theme) {
@@ -151,11 +193,15 @@ function initSettingsModal() {
     const btn = $("btn-update-extension");
     btn.disabled = true;
     btn.textContent = "Mise à jour…";
-    await Api.updateExtensionFiles();
-    $("extension-update-row").hidden = true;
-    showToast("Extension mise à jour — rechargez-la (icône ↻ dans la page des extensions) puis actualisez YouTube.");
-    btn.disabled = false;
-    btn.textContent = "Mettre à jour";
+    try {
+      await Api.updateExtensionFiles();
+      $("extension-update-row").hidden = true;
+      fitModalToViewport("modal-settings");
+      showToast("Extension mise à jour — rechargez-la (icône ↻ dans la page des extensions) puis actualisez YouTube.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Mettre à jour";
+    }
   });
 
   $("settings-toggle").addEventListener("click", refreshStats);
@@ -182,6 +228,7 @@ async function refreshFfmpegStatus() {
   } else {
     statusText.textContent = "Détecté sur le système (non géré par l'application).";
   }
+  fitModalToViewport("modal-settings");
 }
 
 /* ---------- toast ---------- */
@@ -221,6 +268,7 @@ async function refreshExtensionSettings() {
     empty.className = "hint-text";
     empty.textContent = "Aucun navigateur Chromium détecté sur cet ordinateur.";
     list.appendChild(empty);
+    fitModalToViewport("modal-settings");
     return;
   }
 
@@ -238,29 +286,64 @@ async function refreshExtensionSettings() {
     row.appendChild(btn);
     list.appendChild(row);
   });
+  fitModalToViewport("modal-settings");
 }
 
-async function onInstallBrowser(browser, btn) {
+let pendingInstallBrowser = null;
+let pendingInstallBtn = null;
+
+function onInstallBrowser(browser, btn) {
+  pendingInstallBrowser = browser;
+  pendingInstallBtn = btn;
+  $("ext-choice-browser-name").textContent = browser.name;
+  openModal("modal-extension-install-choice");
+}
+
+async function runInstall(mode) {
+  const browser = pendingInstallBrowser;
+  const btn = pendingInstallBtn;
+  closeModal("modal-extension-install-choice");
+  if (!browser) return;
+
   btn.disabled = true;
+  const originalLabel = btn.textContent;
   btn.textContent = "Préparation…";
 
-  const result = await Api.installExtension(browser.id);
+  let result;
+  try {
+    result = await Api.installExtension(browser.id, mode);
+  } catch (err) {
+    result = { ok: false };
+  }
 
   if (!result.ok) {
     btn.textContent = "Échec";
-    setTimeout(() => { btn.disabled = false; btn.textContent = "Installer"; }, 3000);
+    setTimeout(() => { btn.disabled = false; btn.textContent = originalLabel; }, 3000);
     return;
   }
 
   $("ext-install-browser-name").textContent = result.browser;
   $("ext-install-url").textContent = result.extensions_url;
   $("ext-install-path").textContent = result.install_dir;
+  $("ext-install-auto-note").hidden = !result.dev_mode_set;
+  $("ext-install-step-devmode").hidden = result.dev_mode_set;
   $("modal-extension-install").dataset.browserId = browser.id;
   openModal("modal-extension-install");
   Api.launchBrowser(browser.id);
 
   btn.disabled = false;
   btn.textContent = "Réinstaller";
+}
+
+function initExtensionInstallChoiceModal() {
+  $("ext-choice-auto").addEventListener("click", () => runInstall("auto"));
+  $("ext-choice-manual").addEventListener("click", () => runInstall("manual"));
+  $("ext-choice-cancel").addEventListener("click", () => {
+    closeModal("modal-extension-install-choice");
+    if (pendingInstallBtn) pendingInstallBtn.disabled = false;
+    pendingInstallBrowser = null;
+    pendingInstallBtn = null;
+  });
 }
 
 /* ---------- app update ---------- */
@@ -1210,6 +1293,7 @@ async function init() {
   initConfirmModal();
   initOptionsScreen();
   initSettingsModal();
+  initExtensionInstallChoiceModal();
   initExtensionInstallModal();
   initAppUpdateModal();
   initStopButton();

@@ -746,42 +746,60 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   transition: opacity .35s var(--ease), visibility 0s linear .35s;
 }
 .modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .35s var(--ease); }
+/* Spacing above is meant to fit without scrolling at the app's own minimum
+   window size -- this is only a safety net for edge cases (extreme DPI
+   scaling, an unusually short display) where it still doesn't fit. */
+.modal-overlay { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.modal-overlay::-webkit-scrollbar { width: 8px; }
+.modal-overlay::-webkit-scrollbar-track { background: transparent; }
+.modal-overlay::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.modal-overlay::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
 .modal {
   width: 100%; max-width: 420px; margin: 20px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 30px 28px;
+  padding: clamp(14px, 2.4vh, 28px) 28px;
   box-shadow: var(--shadow-lg);
+  /* `zoom` is set directly on the element by fitModalToViewport() (app.js)
+     when a modal's natural height doesn't fit the window -- deliberately
+     not through a CSS custom property, since this engine doesn't resolve
+     var() inside `zoom`. `zoom` (not `transform: scale`) is used because
+     this app only ever runs inside WebView2/Chromium, and unlike
+     `transform`, `zoom` actually shrinks the element's layout box --
+     `transform: scale()` only shrinks the painted pixels, so the overlay's
+     scrollable area (and thus the scrollbar we're trying to avoid) would
+     stay exactly as large as the unscaled content. */
   transform: translateY(18px) scale(.96);
   transition: transform .4s var(--ease);
 }
 .modal-overlay.active .modal { transform: translateY(0) scale(1); }
 .modal-settings-card { max-width: 460px; }
+.modal-settings-card h3 { margin: 0 0 12px; }
 
 .settings-section-title {
-  margin: 26px 0 14px;
+  margin: clamp(8px, 1.2vh, 22px) 0 clamp(5px, 0.8vh, 12px);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--text-2);
-  padding-top: 18px;
+  padding-top: clamp(6px, 1vh, 16px);
   border-top: 1px solid var(--border);
 }
 .modal h3 + .stat-card,
-.modal h3 + .settings-section-title { margin-top: 18px; padding-top: 0; border-top: none; }
+.modal h3 + .settings-section-title { margin-top: 0; padding-top: 0; border-top: none; }
 
 .stat-card {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 16px 18px;
+  padding: clamp(8px, 1.8vh, 16px) 18px;
   border-radius: var(--radius-md);
   background: var(--accent-grad);
   margin-bottom: 4px;
 }
-.stat-value { font-size: 30px; font-weight: 800; color: #fff; line-height: 1; }
+.stat-value { font-size: clamp(22px, 3.5vh, 30px); font-weight: 800; color: #fff; line-height: 1; }
 .stat-label { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
 .modal-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 14px; margin-bottom: 18px; background: var(--bg-1); }
 .modal-title { margin: 0 0 6px; font-size: 17px; font-weight: 700; line-height: 1.35; }
@@ -872,12 +890,12 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .btn-stop:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 /* ---------- Settings modal ---------- */
-.settings-row { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.settings-row { display: flex; align-items: center; gap: 16px; margin-bottom: clamp(8px, 1.4vh, 18px); }
 .settings-row-text { flex: 1; }
 .settings-row-title { margin: 0 0 4px; font-size: 14.5px; font-weight: 650; }
 .settings-row .hint-text { margin: 0; }
-.settings-block { margin-bottom: 22px; }
-.settings-block-hint { margin: 2px 0 10px; }
+.settings-block { margin-bottom: clamp(8px, 1.4vh, 18px); }
+.settings-block-hint { margin: 2px 0 clamp(4px, 0.8vh, 8px); }
 .settings-number { display: flex; align-items: center; gap: 6px; color: var(--text-1); font-size: 13px; font-weight: 600; }
 .settings-number input[type="number"] {
   width: 56px; text-align: center;
@@ -919,16 +937,16 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 }
 
 /* ---------- Extension settings ---------- */
-.browser-list { display: flex; flex-direction: column; gap: 10px; }
+.browser-list { display: flex; flex-direction: column; gap: clamp(4px, 0.8vh, 8px); }
 .browser-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 12px;
+  padding: clamp(5px, 0.8vh, 9px) 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
 .browser-row-icon {
-  width: 28px; height: 28px; flex: none;
+  width: 26px; height: 26px; flex: none;
   border-radius: 8px;
   background: var(--accent-grad);
   display: flex; align-items: center; justify-content: center;
@@ -993,6 +1011,45 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 }
 .btn-copy-small { padding: 8px 14px; font-size: 12.5px; flex: none; }
 
+.ext-install-auto-note {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(34, 211, 197, .1);
+  border: 1px solid rgba(34, 211, 197, .3);
+  color: var(--text-0);
+  font-size: 12.5px;
+}
+
+/* ---------- Extension install: automatic/manual choice ---------- */
+.install-choice-list { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 22px; }
+.install-choice-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-0);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .2s var(--ease);
+}
+.install-choice-option:hover { border-color: var(--accent-2); background: var(--bg-1); transform: translateY(-1px); }
+.install-choice-title { font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.install-choice-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.install-choice-hint { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+
 /* ---------- App / extension update ---------- */
 .update-badge {
   display: inline-block;
@@ -1037,18 +1094,24 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .extension-update-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  padding: 6px 6px 6px 12px;
+  margin-bottom: clamp(4px, 0.8vh, 8px);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 51, 102, 0.35);
-  background: linear-gradient(135deg, rgba(255, 51, 102, 0.12), rgba(124, 92, 255, 0.12));
-  font-size: 12.5px;
+  border: 1px solid rgba(255, 51, 102, 0.3);
+  background: rgba(255, 51, 102, 0.08);
+  font-size: 12px;
+  line-height: 1.35;
   color: var(--text-0);
 }
-
-.extension-update-row .btn-secondary { padding: 8px 16px; font-size: 12.5px; flex: none; }
+.extension-update-row::before {
+  content: "";
+  width: 7px; height: 7px; flex: none;
+  border-radius: 50%;
+  background: var(--accent-grad);
+}
+.extension-update-row span { flex: 1; }
+.extension-update-row .btn-secondary { padding: 7px 14px; font-size: 12px; flex: none; }
 .toast::before {
   content: "";
   width: 18px; height: 18px; flex: none;

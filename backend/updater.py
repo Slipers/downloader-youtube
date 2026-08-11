@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.12"
+APP_VERSION = "1.13"
 
 # This machine's own dev build -- lets "Mettre à jour" work with zero hosting
 # while iterating locally. Harmless no-op on any other machine (path won't exist).
