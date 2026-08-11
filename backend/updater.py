@@ -24,13 +24,25 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.14"
+APP_VERSION = "1.15"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.15",
+        "date": "11 août 2026",
+        "bullets": [
+            "L'installation automatique de l'extension est maintenant un vrai enchaînement étape par étape (navigateur, mode développeur, fichiers, presse-papiers).",
+            "Retrait du mécanisme de policy Chrome qui ne fonctionnait jamais et provoquait une erreur « clé privée » déroutante.",
+            "Ajout du téléchargement de vidéos Instagram (reels et posts), avec un fond teinté orange et violet.",
+            "Le bouton « Nouveautés » est maintenant dans la barre du haut, à côté de Paramètres.",
+            "Correction d'une bulle bleue qui restait affichée même en mode YouTube.",
+            "Réalignement et restylisation du compteur de vidéos téléchargées dans les paramètres.",
+        ],
+    },
     {
         "version": "1.14",
         "date": "11 août 2026",

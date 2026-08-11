@@ -16,7 +16,8 @@ YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
 )
 TIKTOK_URL_RE = re.compile(r"^https?://(www\.|vm\.|vt\.|m\.)?tiktok\.com/")
-SUPPORTED_URL_PATTERNS = (YOUTUBE_URL_RE, TIKTOK_URL_RE)
+INSTAGRAM_URL_RE = re.compile(r"^https?://(www\.)?instagram\.com/(reel|p|tv)/[\w-]+")
+SUPPORTED_URL_PATTERNS = (YOUTUBE_URL_RE, TIKTOK_URL_RE, INSTAGRAM_URL_RE)
 
 WINDOW_TITLE = "Downloader Youtube"
 
@@ -85,7 +86,7 @@ class Api:
 
     def fetch_video_info(self, url: str):
         if not self.is_valid_youtube_url(url):
-            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube ou TikTok valide."}
+            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube, TikTok ou Instagram valide."}
         try:
             info = downloader.get_video_info(url.strip())
             return {"ok": True, "data": info}
@@ -238,6 +239,7 @@ class Api:
         """Called once at startup: if this build ships a newer extension than
         what's synced on disk (e.g. right after an app update), refresh it
         silently and let the user know a browser-side reload is needed."""
+        extension_installer.cleanup_stale_policies()
         result = self.check_extension_update()
         if result.get("available"):
             extension_installer.sync_only()

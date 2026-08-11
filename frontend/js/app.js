@@ -3,15 +3,18 @@
 const QUALITY_ORDER = ["auto", "144p", "480p", "720p", "1080p", "1440p", "2160p"];
 const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]+/i;
 const TIKTOK_URL_RE = /^https?:\/\/(www\.|vm\.|vt\.|m\.)?tiktok\.com\//i;
+const INSTAGRAM_URL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[\w-]+/i;
 
-const PLATFORM_URL_RE = { youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE };
+const PLATFORM_URL_RE = { youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE, instagram: INSTAGRAM_URL_RE };
 const PLATFORM_PLACEHOLDER = {
   youtube: "https://www.youtube.com/watch?v=...",
   tiktok: "https://www.tiktok.com/@utilisateur/video/...",
+  instagram: "https://www.instagram.com/reel/...",
 };
 const PLATFORM_SUBTITLE = {
   youtube: "Copiez l'URL YouTube de la vidéo que vous souhaitez télécharger.",
   tiktok: "Copiez l'URL TikTok de la vidéo que vous souhaitez télécharger.",
+  instagram: "Copiez l'URL Instagram de la vidéo (reel ou post) que vous souhaitez télécharger.",
 };
 
 const state = {
@@ -308,27 +311,16 @@ function onInstallBrowser(browser, btn) {
   pendingInstallBrowser = browser;
   pendingInstallBtn = btn;
   $("ext-choice-browser-name").textContent = browser.name;
+  $("ext-choice-picker").hidden = false;
+  $("ext-auto-progress").hidden = true;
+  document.querySelectorAll("#ext-auto-steps .fetch-step").forEach((el) => el.classList.remove("active", "done"));
   openModal("modal-extension-install-choice");
 }
 
-async function runInstall(mode) {
-  const browser = pendingInstallBrowser;
-  const btn = pendingInstallBtn;
-  closeModal("modal-extension-install-choice");
-  if (!browser) return;
-
-  btn.disabled = true;
-  const originalLabel = btn.textContent;
-  btn.textContent = "Préparation…";
-
-  let result;
-  try {
-    result = await Api.installExtension(browser.id, mode);
-  } catch (err) {
-    result = { ok: false };
-  }
-
+function showInstallResult(browser, btn, result) {
   if (!result.ok) {
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
     btn.textContent = "Échec";
     showToast(
       result.error === "extension_files_missing"
@@ -352,9 +344,48 @@ async function runInstall(mode) {
   btn.textContent = "Réinstaller";
 }
 
+async function runInstallManual() {
+  const browser = pendingInstallBrowser;
+  const btn = pendingInstallBtn;
+  closeModal("modal-extension-install-choice");
+  if (!browser) return;
+
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = "Préparation…";
+  let result;
+  try {
+    result = await Api.installExtension(browser.id, "manual");
+  } catch (err) {
+    result = { ok: false };
+  }
+  btn.textContent = originalLabel;
+  showInstallResult(browser, btn, result);
+}
+
+async function runInstallAuto() {
+  const browser = pendingInstallBrowser;
+  const btn = pendingInstallBtn;
+  if (!browser) return;
+
+  $("ext-choice-picker").hidden = true;
+  $("ext-auto-progress").hidden = false;
+  fitModalToViewport("modal-extension-install-choice");
+
+  let result;
+  try {
+    result = await runFetchStagesAnimation(Api.installExtension(browser.id, "auto"), "ext-auto-steps");
+  } catch (err) {
+    result = { ok: false };
+  }
+
+  closeModal("modal-extension-install-choice");
+  showInstallResult(browser, btn, result);
+}
+
 function initExtensionInstallChoiceModal() {
-  $("ext-choice-auto").addEventListener("click", () => runInstall("auto"));
-  $("ext-choice-manual").addEventListener("click", () => runInstall("manual"));
+  $("ext-choice-auto").addEventListener("click", runInstallAuto);
+  $("ext-choice-manual").addEventListener("click", runInstallManual);
   $("ext-choice-cancel").addEventListener("click", () => {
     closeModal("modal-extension-install-choice");
     if (pendingInstallBtn) pendingInstallBtn.disabled = false;
@@ -378,36 +409,39 @@ function initAppUpdateModal() {
 
 let changelogLoaded = false;
 
-function initChangelogModal() {
-  $("btn-open-changelog").addEventListener("click", async () => {
-    openModal("modal-changelog");
-    if (changelogLoaded) return;
-    try {
-      const { installed_version, entries } = await Api.getChangelog();
-      $("changelog-installed-version").textContent = `Version installée : v${installed_version}`;
-      const list = $("changelog-list");
-      list.innerHTML = "";
-      entries.forEach((entry, i) => {
-        const item = document.createElement("div");
-        item.className = "changelog-entry";
-        const isNewest = i === 0;
-        item.innerHTML = `
-          <div class="changelog-entry-marker${isNewest ? " newest" : ""}"></div>
-          <div class="changelog-entry-body">
-            <div class="changelog-entry-head">
-              <span class="changelog-entry-version">Version ${entry.version}</span>
-              ${isNewest ? '<span class="changelog-entry-badge">Nouveau</span>' : ""}
-              <span class="changelog-entry-date">${entry.date}</span>
-            </div>
-            <ul>${entry.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
+async function openChangelogModal() {
+  openModal("modal-changelog");
+  if (changelogLoaded) return;
+  try {
+    const { installed_version, entries } = await Api.getChangelog();
+    $("changelog-installed-version").textContent = `Version installée : v${installed_version}`;
+    const list = $("changelog-list");
+    list.innerHTML = "";
+    entries.forEach((entry, i) => {
+      const item = document.createElement("div");
+      item.className = "changelog-entry";
+      const isNewest = i === 0;
+      item.innerHTML = `
+        <div class="changelog-entry-marker${isNewest ? " newest" : ""}"></div>
+        <div class="changelog-entry-body">
+          <div class="changelog-entry-head">
+            <span class="changelog-entry-version">Version ${entry.version}</span>
+            ${isNewest ? '<span class="changelog-entry-badge">Nouveau</span>' : ""}
+            <span class="changelog-entry-date">${entry.date}</span>
           </div>
-        `;
-        list.appendChild(item);
-      });
-      changelogLoaded = true;
-      fitModalToViewport("modal-changelog");
-    } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
-  });
+          <ul>${entry.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    changelogLoaded = true;
+    fitModalToViewport("modal-changelog");
+  } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
+}
+
+function initChangelogModal() {
+  $("btn-open-changelog").addEventListener("click", openChangelogModal);
+  $("update-changelog-btn").addEventListener("click", openChangelogModal);
   $("changelog-close").addEventListener("click", () => closeModal("modal-changelog"));
 }
 
@@ -497,6 +531,7 @@ function setPlatform(platform) {
   // works on any Element and correctly reflects to the [hidden] CSS selector.
   $("platform-icon-youtube").toggleAttribute("hidden", platform !== "youtube");
   $("platform-icon-tiktok").toggleAttribute("hidden", platform !== "tiktok");
+  $("platform-icon-instagram").toggleAttribute("hidden", platform !== "instagram");
   $("url-input").placeholder = PLATFORM_PLACEHOLDER[platform];
   $("url-screen-subtitle").textContent = PLATFORM_SUBTITLE[platform];
   document.querySelectorAll(".platform-option").forEach((opt) => {
@@ -504,6 +539,7 @@ function setPlatform(platform) {
   });
   $("app").classList.toggle("platform-youtube", platform === "youtube");
   $("app").classList.toggle("platform-tiktok", platform === "tiktok");
+  $("app").classList.toggle("platform-instagram", platform === "instagram");
   $("url-input").dispatchEvent(new Event("input"));
 }
 
@@ -569,8 +605,8 @@ function resetConfirmModal() {
   document.querySelectorAll(".fetch-step").forEach((el) => el.classList.remove("active", "done"));
 }
 
-async function runFetchStagesAnimation(promise) {
-  const stepEls = Array.from(document.querySelectorAll(".fetch-step"));
+async function runFetchStagesAnimation(promise, stepsContainerId = "fetch-steps") {
+  const stepEls = Array.from($(stepsContainerId).querySelectorAll(".fetch-step"));
   let i = 0;
   const activateNext = () => {
     if (i > 0) stepEls[i - 1].classList.replace("active", "done");

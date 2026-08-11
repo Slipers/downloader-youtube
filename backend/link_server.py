@@ -33,14 +33,6 @@ class LinkRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_bytes(self, status: int, content_type: str, body: bytes):
-        self.send_response(status)
-        self._cors_headers()
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
     def _read_json_body(self) -> dict:
         length = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(length) if length else b""
@@ -59,12 +51,6 @@ class LinkRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/ping":
             settings = config.load_settings()
             self._send_json(200, {"ok": True, "app": "ytdl-suite", "paired": bool(settings.get("paired"))})
-            return
-        if self.path == "/update.xml":
-            self._serve_update_xml()
-            return
-        if self.path == "/extension.crx":
-            self._serve_crx()
             return
         self._send_json(404, {"ok": False})
 
@@ -92,28 +78,6 @@ class LinkRequestHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(404, {"ok": False})
-
-    # ---- extension auto-install support --------------------------------
-    def _serve_update_xml(self):
-        try:
-            version = json.loads((config.EXTENSION_SRC_DIR / "manifest.json").read_text(encoding="utf-8"))["version"]
-        except (OSError, KeyError, json.JSONDecodeError):
-            version = "1.0.0"
-        xml = (
-            "<?xml version='1.0' encoding='UTF-8'?>\n"
-            "<gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>\n"
-            f"  <app appid='{config.EXTENSION_ID}'>\n"
-            f"    <updatecheck codebase='http://127.0.0.1:{config.LINK_SERVER_PORT}/extension.crx' version='{version}' />\n"
-            "  </app>\n"
-            "</gupdate>\n"
-        )
-        self._send_bytes(200, "application/xml", xml.encode("utf-8"))
-
-    def _serve_crx(self):
-        if not config.EXTENSION_CRX_PATH.exists():
-            self._send_json(404, {"ok": False})
-            return
-        self._send_bytes(200, "application/x-chrome-extension", config.EXTENSION_CRX_PATH.read_bytes())
 
 
 class LinkServer(ThreadingHTTPServer):

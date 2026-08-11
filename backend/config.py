@@ -16,8 +16,6 @@ EXTENSION_ID = "fclpcgadpekfhgmjimnekigfhkejhdmk"
 LINK_SERVER_PORT = 47990
 EXTENSION_SRC_DIR = BASE_DIR / "extension"
 EXTENSION_INSTALL_DIR = APP_DIR / "extension"
-EXTENSION_BUILD_DIR = EXTENSION_INSTALL_DIR / "build"
-EXTENSION_CRX_PATH = EXTENSION_BUILD_DIR / "extension.crx"
 
 DEFAULTS = {
     "theme": None,  # None => follow OS preference on first run

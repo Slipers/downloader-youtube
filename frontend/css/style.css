@@ -92,11 +92,19 @@ body {
 #app.platform-youtube {
   --tint-a: #ff3366;
   --tint-b: #ff5470;
+  --tint-c: #ff8a5c;
   --tint-op-boost: .12;
 }
 #app.platform-tiktok {
   --tint-a: #2f7dff;
   --tint-b: #00c2ff;
+  --tint-c: #1450c9;
+  --tint-op-boost: .12;
+}
+#app.platform-instagram {
+  --tint-a: #f77737;
+  --tint-b: #c13584;
+  --tint-c: #833ab4;
   --tint-op-boost: .12;
 }
 
@@ -385,6 +393,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
    engine (unlike plain HTML elements) -- state it explicitly. */
 .url-field-icon[hidden] { display: none; }
 #platform-icon-tiktok { color: #25f4ee; }
+#platform-icon-instagram { color: #e1306c; }
 
 .platform-picker-btn {
   display: flex;
@@ -446,6 +455,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .platform-option.active { background: var(--surface-strong); color: var(--text-0); }
 .platform-option-icon { width: 18px; height: 18px; flex-shrink: 0; color: #ff0033; }
 .platform-option[data-platform="tiktok"] .platform-option-icon { color: #25f4ee; }
+.platform-option[data-platform="instagram"] .platform-option-icon { color: #e1306c; }
 .url-field input[type="text"] {
   border: none;
   background: transparent;
@@ -810,15 +820,28 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 
 .stat-card {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: clamp(8px, 1.8vh, 16px) 18px;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(10px, 2vh, 18px) 20px;
   border-radius: var(--radius-md);
   background: var(--accent-grad);
   margin-bottom: 4px;
 }
-.stat-value { font-size: clamp(22px, 3.5vh, 30px); font-weight: 800; color: #fff; line-height: 1; }
-.stat-label { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.stat-value {
+  flex: none;
+  min-width: 1.6ch;
+  font-size: clamp(24px, 3.5vh, 32px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  text-align: center;
+}
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.88);
+}
 .modal-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 14px; margin-bottom: 18px; background: var(--bg-1); }
 .modal-title { margin: 0 0 6px; font-size: 17px; font-weight: 700; line-height: 1.35; }
 .modal-meta { margin: 0 0 16px; color: var(--text-1); font-size: 13.5px; line-height: 1.5; }

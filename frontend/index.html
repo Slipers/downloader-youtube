@@ -11,6 +11,9 @@
 <div id="app">
 
   <div class="topbar" aria-hidden="false">
+    <button id="btn-open-changelog" class="icon-btn" aria-label="Nouveautés" title="Nouveautés">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+    </button>
     <button id="settings-toggle" class="icon-btn" aria-label="Paramètres" title="Paramètres">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
     </button>
@@ -52,6 +55,7 @@
         <button type="button" id="platform-picker-btn" class="platform-picker-btn" aria-label="Choisir la plateforme" title="Choisir la plateforme">
           <svg id="platform-icon-youtube" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg>
           <svg id="platform-icon-tiktok" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+          <svg id="platform-icon-instagram" class="url-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
           <svg class="platform-picker-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
@@ -67,6 +71,10 @@
           <button type="button" class="platform-option" data-platform="tiktok">
             <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
             <span>TikTok</span>
+          </button>
+          <button type="button" class="platform-option" data-platform="instagram">
+            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
+            <span>Instagram</span>
           </button>
         </div>
       </div>
@@ -340,7 +348,7 @@
   <div id="modal-app-update" class="modal-overlay">
     <div class="modal">
       <div id="update-ask" class="ffmpeg-step">
-        <button type="button" id="btn-open-changelog" class="modal-corner-btn" aria-label="Voir les nouveautés" title="Voir les nouveautés">
+        <button type="button" id="update-changelog-btn" class="modal-corner-btn" aria-label="Voir les nouveautés" title="Voir les nouveautés">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
         </button>
         <span class="update-badge">Nouvelle version</span>
@@ -388,20 +396,32 @@
   <!-- Modal : choix du mode d'installation de l'extension -->
   <div id="modal-extension-install-choice" class="modal-overlay">
     <div class="modal">
-      <h3>Installer l'extension</h3>
-      <p class="modal-meta">Comment voulez-vous l'installer sur <strong id="ext-choice-browser-name">ce navigateur</strong> ?</p>
-      <div class="install-choice-list">
-        <button type="button" id="ext-choice-auto" class="install-choice-option">
-          <span class="install-choice-title">Automatique <span class="install-choice-badge">Recommandé</span></span>
-          <span class="install-choice-hint">L'application active le mode développeur et copie le dossier pour vous. Il ne reste qu'un clic sur « Charger l'extension non empaquetée ».</span>
-        </button>
-        <button type="button" id="ext-choice-manual" class="install-choice-option">
-          <span class="install-choice-title">Manuelle</span>
-          <span class="install-choice-hint">L'application ne touche pas au navigateur ; vous suivez chaque étape vous-même.</span>
-        </button>
+      <div id="ext-choice-picker">
+        <h3>Installer l'extension</h3>
+        <p class="modal-meta">Comment voulez-vous l'installer sur <strong id="ext-choice-browser-name">ce navigateur</strong> ?</p>
+        <div class="install-choice-list">
+          <button type="button" id="ext-choice-auto" class="install-choice-option">
+            <span class="install-choice-title">Automatique <span class="install-choice-badge">Recommandé</span></span>
+            <span class="install-choice-hint">L'application active le mode développeur et prépare tout pour vous. Il ne reste qu'un clic sur « Charger l'extension non empaquetée » — la seule étape que Chrome ne laisse pas automatiser.</span>
+          </button>
+          <button type="button" id="ext-choice-manual" class="install-choice-option">
+            <span class="install-choice-title">Manuelle</span>
+            <span class="install-choice-hint">L'application ne touche pas au navigateur ; vous suivez chaque étape vous-même.</span>
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button id="ext-choice-cancel" class="btn-secondary btn-full">Annuler</button>
+        </div>
       </div>
-      <div class="modal-actions">
-        <button id="ext-choice-cancel" class="btn-secondary btn-full">Annuler</button>
+      <div id="ext-auto-progress" hidden>
+        <h3>Installation automatique</h3>
+        <p class="modal-meta">Quelques secondes, l'application prépare tout pour vous.</p>
+        <ol class="fetch-steps" id="ext-auto-steps">
+          <li class="fetch-step" data-step="check"><span class="fetch-step-icon"></span>Vérification du navigateur</li>
+          <li class="fetch-step" data-step="devmode"><span class="fetch-step-icon"></span>Activation du mode développeur</li>
+          <li class="fetch-step" data-step="files"><span class="fetch-step-icon"></span>Préparation des fichiers de l'extension</li>
+          <li class="fetch-step" data-step="clipboard"><span class="fetch-step-icon"></span>Copie du dossier dans le presse-papiers</li>
+        </ol>
       </div>
     </div>
   </div>
