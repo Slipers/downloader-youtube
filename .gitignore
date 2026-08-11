@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+build/
+dist/
+*.spec
+DownloaderYoutubeSetup.exe
+*.egg-info/
+.vscode/
+.idea/

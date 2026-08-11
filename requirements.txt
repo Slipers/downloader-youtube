@@ -1,0 +1,2 @@
+pywebview>=5.0
+yt-dlp[default]>=2025.1.1

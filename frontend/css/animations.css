@@ -1,0 +1,94 @@
+@keyframes float-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6vw, 4vh) scale(1.08); }
+  66% { transform: translate(-4vw, 6vh) scale(0.94); }
+}
+@keyframes float-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-7vw, -5vh) scale(1.1); }
+}
+@keyframes float-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(-5vw, 5vh) scale(0.9); }
+  70% { transform: translate(4vw, -4vh) scale(1.05); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .55; transform: scale(.7); }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.start-content, .card .option-block, .card h2 {
+  animation: fade-in-up .6s var(--ease);
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pill-btn.active, .export-card.active { animation: pop-in .25s var(--ease); }
+
+@keyframes ken-burns {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.12) translate(-1.5%, -1.5%); }
+}
+
+@keyframes sheen-sweep {
+  0% { background-position: -50% -50%; }
+  100% { background-position: 150% 150%; }
+}
+
+@keyframes result-pop {
+  0% { opacity: 0; transform: scale(.5) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(1.12) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.result-icon { animation: result-pop .65s var(--ease); }
+
+@keyframes check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---------- Flip + swipe transition: confirm modal -> options screen ---------- */
+@keyframes flip-out-back {
+  0%   { transform: perspective(1400px) translateX(0) rotateY(0deg) scale(1); opacity: 1; }
+  100% { transform: perspective(1400px) translateX(-16%) rotateY(-100deg) scale(.92); opacity: 0; }
+}
+@keyframes flip-in-back {
+  0%   { transform: perspective(1400px) translateX(16%) rotateY(90deg) scale(.92); opacity: 0; }
+  60%  { transform: perspective(1400px) translateX(-2%) rotateY(-6deg) scale(1.01); opacity: 1; }
+  100% { transform: perspective(1400px) translateX(0) rotateY(0deg) scale(1); opacity: 1; }
+}
+.modal.flip-out { animation: flip-out-back .5s cubic-bezier(.4,0,.2,1) forwards; }
+.flip-in-playing { animation: flip-in-back .6s cubic-bezier(.22,1,.36,1); }
+
+/* ---------- Progress steps staggered entrance ---------- */
+@keyframes step-enter {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.steps-enter .step { animation: step-enter .4s var(--ease) both; }
+.steps-enter .step:nth-child(1) { animation-delay: .05s; }
+.steps-enter .step:nth-child(2) { animation-delay: .15s; }
+.steps-enter .step:nth-child(3) { animation-delay: .25s; }
+.steps-enter .step:nth-child(4) { animation-delay: .35s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .blob, .progress-bar-fill::after, .spinner, .step-dot::after, .preview-image, .preview-sheen, .result-icon { animation: none !important; }
+  .screen, .modal, .btn-primary, .pill-btn { transition: none !important; }
+}
