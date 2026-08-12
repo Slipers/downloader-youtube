@@ -7,7 +7,7 @@ from collections import deque
 from pathlib import Path
 
 import yt_dlp
-from yt_dlp.utils import DownloadCancelled
+from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
 QUALITY_TIERS = {
     "auto": {"height": None, "label": "Auto", "recommended_kbps": None},
@@ -187,6 +187,28 @@ def _needs_reencode(bitrate_kbps: int, recommended_kbps: int | None) -> bool:
     return abs(bitrate_kbps - recommended_kbps) / recommended_kbps > 0.15
 
 
+def _target_extension(options: dict) -> str:
+    """Mirrors the extension build_ydl_opts ends up producing, without
+    actually building the full opts dict -- used to predict the output
+    filename before downloading (see predict_output_path)."""
+    output_format = options.get("output_format")
+    if options["export_type"] == "audio_only":
+        return output_format if output_format in AUDIO_FORMATS else "mp3"
+    return output_format if output_format in VIDEO_CONTAINERS else "mp4"
+
+
+def predict_output_path(title: str, options: dict) -> Path:
+    """Predicts the exact file build_ydl_opts' "%(title)s.%(ext)s" template
+    (restrictfilenames=False) will produce, so the app can check for an
+    existing file *before* starting a real download. Always accurate for
+    this app's own UI, which always sends an explicit output_format --
+    reusing yt-dlp's own sanitizer keeps it byte-for-byte consistent with
+    what a real download would actually write."""
+    safe_title = sanitize_filename(title, restricted=False)
+    ext = _target_extension(options)
+    return Path(options["dest_dir"]) / f"{safe_title}.{ext}"
+
+
 def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     export_type = options["export_type"]  # 'video_audio' | 'audio_only' | 'video_only'
     quality = options["quality"]
@@ -209,6 +231,13 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     }
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location
+    # Set when the user resolved a "file already exists" prompt: explicitly
+    # overwrite, or save under a different name instead of the video's title.
+    if options.get("overwrite"):
+        opts["overwrites"] = True
+    custom_filename = options.get("custom_filename")
+    if custom_filename:
+        opts["outtmpl"] = {"default": f"{custom_filename.replace('%', '%%')}.%(ext)s"}
 
     fps_filter = "" if fps in (None, "auto") else f"[fps<={int(fps)}]"
 

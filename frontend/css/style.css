@@ -893,7 +893,24 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .modal-question { font-size: 14px; font-weight: 600; margin: 0 0 20px; }
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn-secondary, .modal-actions .btn-primary { flex: 1; }
+.modal-actions-col { flex-direction: column; }
 .ffmpeg-step h3 { margin: 0 0 10px; font-size: 18px; }
+
+.file-exists-rename-input {
+  width: 100%;
+  min-height: auto;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+.file-exists-rename-input:focus { border-color: var(--accent-2); }
+#file-exists-rename-error { margin-top: 8px; }
 
 /* ---------- Result screen ---------- */
 .result-card { text-align: center; }

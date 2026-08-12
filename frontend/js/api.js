@@ -70,6 +70,10 @@ const Api = {
     await apiReady;
     return window.pywebview.api.uninstall_ffmpeg();
   },
+  async checkOutputExists(title, options) {
+    await apiReady;
+    return window.pywebview.api.check_output_exists(title, options);
+  },
   async startDownload(url, options) {
     await apiReady;
     return window.pywebview.api.start_download(url, options);

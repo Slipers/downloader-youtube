@@ -1103,8 +1103,98 @@ function initOptionsScreen() {
     if (!state.destDir) {
       state.destDir = $("dest-input").value || state.settings.last_download_dir;
     }
+    startDownloadFlow();
+  });
+}
+
+/* ---------- "file already exists" prompt ---------- */
+function currentDownloadOptions() {
+  return {
+    export_type: state.exportType,
+    output_format: state.outputFormat,
+    dest_dir: state.destDir,
+  };
+}
+
+function suggestRenameFrom(filename) {
+  const dotIndex = filename.lastIndexOf(".");
+  const base = dotIndex > 0 ? filename.slice(0, dotIndex) : filename;
+  return `${base} (1)`;
+}
+
+function openFileExistsModal(filename) {
+  $("file-exists-name").textContent = filename;
+  $("file-exists-step-ask").hidden = false;
+  $("file-exists-step-rename").hidden = true;
+  $("file-exists-rename-error").hidden = true;
+  openModal("modal-file-exists");
+}
+
+function initFileExistsModal() {
+  $("file-exists-cancel").addEventListener("click", () => closeModal("modal-file-exists"));
+
+  $("file-exists-overwrite").addEventListener("click", () => {
+    state.downloadOverwrite = true;
+    closeModal("modal-file-exists");
     beginDownloadProcess();
   });
+
+  $("file-exists-rename").addEventListener("click", () => {
+    $("file-exists-step-ask").hidden = true;
+    $("file-exists-step-rename").hidden = false;
+    $("file-exists-rename-error").hidden = true;
+    const input = $("file-exists-rename-input");
+    input.value = suggestRenameFrom($("file-exists-name").textContent);
+    input.focus();
+    input.select();
+  });
+
+  $("file-exists-rename-back").addEventListener("click", () => {
+    $("file-exists-step-rename").hidden = true;
+    $("file-exists-step-ask").hidden = false;
+  });
+
+  $("file-exists-rename-confirm").addEventListener("click", async () => {
+    const newName = $("file-exists-rename-input").value.trim();
+    if (!newName) return;
+    const btn = $("file-exists-rename-confirm");
+    btn.disabled = true;
+    let check;
+    try {
+      check = await Api.checkOutputExists(newName, currentDownloadOptions());
+    } catch (err) {
+      check = { exists: false };
+    }
+    btn.disabled = false;
+    if (check.exists) {
+      $("file-exists-rename-error").textContent = "Ce nom existe aussi déjà — essayez-en un autre.";
+      $("file-exists-rename-error").hidden = false;
+      return;
+    }
+    state.downloadCustomFilename = newName;
+    closeModal("modal-file-exists");
+    beginDownloadProcess();
+  });
+}
+
+async function startDownloadFlow() {
+  state.downloadOverwrite = false;
+  state.downloadCustomFilename = null;
+
+  const title = state.videoInfo && state.videoInfo.title;
+  if (title) {
+    let check;
+    try {
+      check = await Api.checkOutputExists(title, currentDownloadOptions());
+    } catch (err) {
+      check = { exists: false };
+    }
+    if (check.exists) {
+      openFileExistsModal(check.filename);
+      return;
+    }
+  }
+  beginDownloadProcess();
 }
 
 /* ---------- ffmpeg modal ---------- */
@@ -1371,6 +1461,8 @@ function runDownload() {
     dest_dir: state.destDir,
     output_format: state.outputFormat,
     cookies_browser_hint: state.videoInfo?.cookies_browser_used || null,
+    overwrite: state.downloadOverwrite || false,
+    custom_filename: state.downloadCustomFilename || null,
   });
 }
 
@@ -1677,6 +1769,7 @@ async function init() {
   initUrlScreen();
   initConfirmModal();
   initOptionsScreen();
+  initFileExistsModal();
   initSettingsModal();
   initExtensionInstallModal();
   initAppUpdateModal();

@@ -150,6 +150,10 @@ class Api:
             return {"ok": False, "error": str(exc)}
 
     # ---- download -------------------------------------------------------
+    def check_output_exists(self, title: str, options: dict):
+        path = downloader.predict_output_path(title, options)
+        return {"exists": path.exists(), "filename": path.name}
+
     def start_download(self, url: str, options: dict):
         self._cancel_event = threading.Event()
         config.save_settings(

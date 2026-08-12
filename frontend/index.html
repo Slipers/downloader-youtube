@@ -274,6 +274,31 @@
     </div>
   </div>
 
+  <!-- Modal : fichier déjà existant -->
+  <div id="modal-file-exists" class="modal-overlay">
+    <div class="modal">
+      <div id="file-exists-step-ask">
+        <h3>Ce fichier existe déjà</h3>
+        <p class="modal-meta">Un fichier nommé <strong id="file-exists-name"></strong> existe déjà dans le dossier de destination.</p>
+        <div class="modal-actions modal-actions-col">
+          <button id="file-exists-overwrite" class="btn-primary btn-full">Écraser le fichier existant</button>
+          <button id="file-exists-rename" class="btn-secondary btn-full">Renommer et télécharger</button>
+          <button id="file-exists-cancel" class="btn-secondary btn-full">Annuler</button>
+        </div>
+      </div>
+      <div id="file-exists-step-rename" hidden>
+        <h3>Choisir un autre nom</h3>
+        <p class="modal-meta">Le fichier sera enregistré sous ce nom dans le même dossier.</p>
+        <input type="text" id="file-exists-rename-input" class="rating-textarea file-exists-rename-input">
+        <p class="error-text" id="file-exists-rename-error" hidden></p>
+        <div class="modal-actions">
+          <button id="file-exists-rename-back" class="btn-secondary">Retour</button>
+          <button id="file-exists-rename-confirm" class="btn-primary">Télécharger</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal : installation FFmpeg -->
   <div id="modal-ffmpeg" class="modal-overlay">
     <div class="modal">
