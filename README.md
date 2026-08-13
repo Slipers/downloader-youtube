@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/icon.png" width="96" alt="Icône Downloader Youtube">
+
 # Downloader Youtube
 
 Téléchargez des vidéos YouTube, TikTok et Instagram en quelques clics — qualité, format et dossier de destination choisis à l'avance, aucune ligne de commande.
