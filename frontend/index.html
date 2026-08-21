@@ -424,16 +424,12 @@
         </div>
       </div>
       <div id="update-downloading" class="ffmpeg-step" hidden>
-        <h3>Téléchargement de la mise à jour…</h3>
+        <h3 id="update-downloading-title">Téléchargement de la mise à jour…</h3>
         <div class="progress-bar-wrap">
           <div class="progress-bar"><div id="update-progress-fill" class="progress-bar-fill"></div></div>
           <div class="progress-meta"><span id="update-progress-label">0%</span></div>
         </div>
-      </div>
-      <div id="update-installing" class="ffmpeg-step" hidden>
-        <div class="update-spinner"></div>
-        <h3>Installation en cours…</h3>
-        <p class="modal-meta">L'application va redémarrer automatiquement dans un instant.</p>
+        <p class="modal-meta" id="update-installing-note" hidden>L'application va redémarrer automatiquement dans un instant.</p>
       </div>
       <div id="update-error" class="ffmpeg-step" hidden>
         <h3>La mise à jour a échoué</h3>

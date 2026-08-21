@@ -412,13 +412,44 @@ async function openChangelogModal() {
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
 }
 
+function initSmoothWheelScroll(el) {
+  // Chromium's native wheel scroll moves in fixed per-notch jumps, which reads
+  // as choppy on a short list like this one -- easing toward an accumulated
+  // target gives it real momentum instead.
+  let targetTop = el.scrollTop;
+  let raf = null;
+  const step = () => {
+    const current = el.scrollTop;
+    const diff = targetTop - current;
+    if (Math.abs(diff) < 0.5) {
+      el.scrollTop = targetTop;
+      raf = null;
+      return;
+    }
+    el.scrollTop = current + diff * 0.22;
+    raf = requestAnimationFrame(step);
+  };
+  el.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const max = el.scrollHeight - el.clientHeight;
+    targetTop = Math.max(0, Math.min(max, targetTop + e.deltaY));
+    if (!raf) raf = requestAnimationFrame(step);
+  }, { passive: false });
+}
+
 function initChangelogModal() {
   $("btn-open-changelog").addEventListener("click", openChangelogModal);
   $("update-changelog-btn").addEventListener("click", openChangelogModal);
   $("changelog-close").addEventListener("click", () => closeModal("modal-changelog"));
+  initSmoothWheelScroll($("changelog-list"));
 }
 
-async function checkForUpdateOnStartup() {
+async function checkForUpdate() {
+  // A check already in flight or an update already found takes priority --
+  // this runs both at startup and on a timer while the app stays open, so
+  // without this guard a periodic tick could interrupt an active download.
+  if (pendingUpdateInfo) return;
+
   let result;
   try {
     result = await Api.checkForUpdate();
@@ -430,16 +461,19 @@ async function checkForUpdateOnStartup() {
   pendingUpdateInfo = result;
   $("update-ask").hidden = false;
   $("update-downloading").hidden = true;
-  $("update-installing").hidden = true;
   $("update-error").hidden = true;
   $("update-version-label").textContent = `v${result.version}`;
   openModal("modal-app-update");
 }
 
+const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000;
+
 async function onAcceptUpdate() {
   if (!pendingUpdateInfo) return;
   $("update-ask").hidden = true;
   $("update-downloading").hidden = false;
+  $("update-downloading-title").textContent = "Téléchargement de la mise à jour…";
+  $("update-installing-note").hidden = true;
   $("update-progress-fill").style.width = "0%";
   $("update-progress-label").textContent = "0%";
 
@@ -450,15 +484,14 @@ async function onAcceptUpdate() {
     }
   };
   const installingHandler = () => {
-    $("update-downloading").hidden = true;
-    $("update-installing").hidden = false;
+    $("update-downloading-title").textContent = "Installation en cours…";
+    $("update-installing-note").hidden = false;
   };
   const errorHandler = (payload) => {
     Api.off("update_progress", progressHandler);
     Api.off("update_installing", installingHandler);
     Api.off("update_error", errorHandler);
     $("update-downloading").hidden = true;
-    $("update-installing").hidden = true;
     $("update-error").hidden = false;
     $("update-error-text").textContent = payload.error;
   };
@@ -1830,7 +1863,8 @@ async function init() {
   await checkWelcomeMessage();
   setSplashProgress(88);
 
-  await checkForUpdateOnStartup();
+  await checkForUpdate();
+  setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
   Api.startJsRuntimeInstall();
   setSplashProgress(100);
 

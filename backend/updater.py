@@ -24,13 +24,22 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.23"
+APP_VERSION = "1.24"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.24",
+        "date": "21 août 2026",
+        "bullets": [
+            "Le défilement du panneau « Nouveautés » est maintenant fluide au lieu de sauter par à-coups.",
+            "L'application vérifie désormais la présence d'une mise à jour toutes les 20 minutes pendant qu'elle est ouverte, plus seulement au démarrage — la popup peut donc apparaître en cours d'utilisation.",
+            "Pendant une mise à jour, l'écran affiche maintenant un vrai pourcentage de progression au lieu d'un rond qui tourne.",
+        ],
+    },
     {
         "version": "1.23",
         "date": "21 août 2026",

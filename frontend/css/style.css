@@ -1258,18 +1258,8 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   color: var(--text-2);
 }
 
-.update-spinner {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  animation: ytdls-spin 0.8s linear infinite;
-  margin: 0 auto 4px;
-}
-
-@keyframes ytdls-spin {
-  to { transform: rotate(360deg); }
+#update-installing-note {
+  margin-top: 14px;
 }
 
 .extension-update-row {
@@ -1335,6 +1325,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  scroll-behavior: smooth;
 }
 .changelog-list::-webkit-scrollbar { width: 8px; }
 .changelog-list::-webkit-scrollbar-track { background: transparent; }

@@ -266,8 +266,9 @@ class Api:
         try:
             def on_progress(percent):
                 self._push("update_progress", {"percent": percent})
+                if percent == 100:
+                    self._push("update_installing", {})
 
-            self._push("update_installing", {})
             updater.apply_update_and_restart(update_info, on_progress)
             time.sleep(0.5)
             if self.window:
