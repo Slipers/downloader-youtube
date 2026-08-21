@@ -1793,6 +1793,10 @@ async function init() {
   state.alwaysConfirmVideo = settings.always_confirm_video !== false;
   setSplashProgress(45);
 
+  Api.getAppVersion().then((version) => {
+    $("app-version-tag").textContent = `v${version}`;
+  }).catch(() => {});
+
   const previewToggle = $("toggle-preview");
   previewToggle.classList.toggle("on", state.showPreview);
   previewToggle.setAttribute("aria-checked", String(state.showPreview));

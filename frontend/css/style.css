@@ -173,6 +173,18 @@ body {
   display: flex;
   gap: 10px;
 }
+.app-version-tag {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  z-index: 5;
+  font-size: 11px;
+  color: var(--text-2);
+  opacity: .45;
+  letter-spacing: .02em;
+  pointer-events: none;
+  user-select: none;
+}
 .icon-btn {
   position: relative;
   width: 46px;
