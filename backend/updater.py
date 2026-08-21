@@ -24,13 +24,20 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.20"
+APP_VERSION = "1.21"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.21",
+        "date": "21 août 2026",
+        "bullets": [
+            "Correction d'un échec fréquent au téléchargement de vidéos YouTube (« HTTP Error 403: Forbidden »), causé par un bug côté YouTube touchant un des modes de connexion utilisés par l'application.",
+        ],
+    },
     {
         "version": "1.20",
         "date": "11 août 2026",
