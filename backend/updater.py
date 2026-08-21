@@ -24,13 +24,22 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.22"
+APP_VERSION = "1.23"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.23",
+        "date": "21 août 2026",
+        "bullets": [
+            "Correction majeure : seules les qualités « Auto » et « 144p » étaient proposées, même pour les vidéos disponibles en 1080p ou 4K.",
+            "YouTube exige désormais un moteur JavaScript pour donner accès aux hautes résolutions : l'application le télécharge et le configure automatiquement au premier lancement.",
+            "Toute l'échelle de qualité (jusqu'à la 4K) est de nouveau disponible.",
+        ],
+    },
     {
         "version": "1.22",
         "date": "21 août 2026",

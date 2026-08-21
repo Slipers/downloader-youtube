@@ -1812,6 +1812,7 @@ async function init() {
 
   initTheme(settings.theme);
 
+  Api.on("js_runtime_ready", () => showToast("Toutes les qualités vidéo sont maintenant disponibles."));
   Api.on("extension_linked", () => showToast("Extension liée avec succès"));
   Api.on("open_download", (payload) => handleExternalDownload(payload.url));
   Api.on("extension_auto_synced", (payload) =>
@@ -1830,6 +1831,7 @@ async function init() {
   setSplashProgress(88);
 
   await checkForUpdateOnStartup();
+  Api.startJsRuntimeInstall();
   setSplashProgress(100);
 
   hideSplashScreen();

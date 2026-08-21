@@ -9,6 +9,8 @@ from pathlib import Path
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
+from . import js_runtime
+
 QUALITY_TIERS = {
     "auto": {"height": None, "label": "Auto", "recommended_kbps": None},
     "144p": {"height": 144, "label": "144p", "recommended_kbps": 200},
@@ -28,7 +30,9 @@ VIDEO_CONTAINERS = ["mp4", "mkv", "webm"]
 AUDIO_FORMATS = ["mp3", "m4a", "wav", "opus"]
 
 # Player clients that avoid YouTube's bot-check for most public videos without any cookies.
-DEFAULT_PLAYER_CLIENTS = ["android_vr", "web_safari", "tv"]
+# mweb goes first: with a PO token (see js_runtime) it exposes the full ladder up to
+# 4K, while web_safari stays as the fallback that still reaches 1080p without one.
+DEFAULT_PLAYER_CLIENTS = ["mweb", "web_safari", "tv"]
 
 # Browsers to try automatically (in order) when a video does require real authentication.
 # Chrome is tried last: its App-Bound Encryption (since Chrome 127) frequently blocks
@@ -94,11 +98,15 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
 
 
 def _base_opts() -> dict:
-    return {
+    opts = {
         "quiet": True,
         "no_warnings": True,
         "extractor_args": {"youtube": {"player_client": DEFAULT_PLAYER_CLIENTS}},
     }
+    runtime = js_runtime.ydl_opts()
+    opts["extractor_args"].update(runtime.pop("extractor_args", {}))
+    opts.update(runtime)
+    return opts
 
 
 def _pick_storyboard(formats: list) -> dict | None:

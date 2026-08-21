@@ -8,6 +8,7 @@ BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)
 APP_DIR = Path.home() / "AppData" / "Local" / "DownloaderYoutubeer"
 SETTINGS_FILE = APP_DIR / "settings.json"
 FFMPEG_DIR = APP_DIR / "ffmpeg"
+JS_RUNTIME_DIR = APP_DIR / "jsruntime"
 
 DEFAULT_DOWNLOAD_DIR = Path.home() / "Downloads" / "YouTube"
 

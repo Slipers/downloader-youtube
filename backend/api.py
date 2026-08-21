@@ -10,7 +10,7 @@ from pathlib import Path
 import webview
 from yt_dlp.utils import DownloadCancelled
 
-from . import browsers, config, downloader, extension_installer, feedback, ffmpeg_manager, updater, window_utils
+from . import browsers, config, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
 
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
@@ -94,6 +94,10 @@ class Api:
     def fetch_video_info(self, url: str):
         if not self.is_valid_youtube_url(url):
             return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube, TikTok ou Instagram valide."}
+        # Fetching before the runtime lands would silently cap the quality list
+        # at 360p, so wait for the startup install to finish rather than show a
+        # ladder the video doesn't actually have.
+        self.ensure_js_runtime()
         try:
             info = downloader.get_video_info(url.strip())
             return {"ok": True, "data": info}
@@ -148,6 +152,31 @@ class Api:
             return {"ok": True, "removed": removed}
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    # ---- javascript runtime (YouTube quality) --------------------------------
+    def get_js_runtime_status(self):
+        return {"installed": js_runtime.is_installed()}
+
+    def ensure_js_runtime(self):
+        """Downloads the JS runtime if missing. Without it YouTube only offers
+        360p and below, so this runs on startup rather than on request."""
+        if js_runtime.is_installed():
+            return {"ok": True, "installed": True}
+
+        def on_progress(stage, percent):
+            self._push("js_runtime_progress", {"stage": stage, "percent": percent})
+
+        try:
+            js_runtime.install(on_progress)
+            self._push("js_runtime_ready", {})
+            return {"ok": True, "installed": True}
+        except Exception as exc:
+            self._push("js_runtime_error", {"error": str(exc)})
+            return {"ok": False, "error": str(exc)}
+
+    def start_js_runtime_install(self):
+        threading.Thread(target=self.ensure_js_runtime, daemon=True).start()
+        return {"started": True}
 
     # ---- download -------------------------------------------------------
     def check_output_exists(self, title: str, options: dict):

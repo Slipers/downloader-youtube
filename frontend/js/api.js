@@ -102,6 +102,14 @@ const Api = {
     await apiReady;
     return window.pywebview.api.get_app_version();
   },
+  async getJsRuntimeStatus() {
+    await apiReady;
+    return window.pywebview.api.get_js_runtime_status();
+  },
+  async startJsRuntimeInstall() {
+    await apiReady;
+    return window.pywebview.api.start_js_runtime_install();
+  },
   async getChangelog() {
     await apiReady;
     return window.pywebview.api.get_changelog();
