@@ -810,12 +810,20 @@ async function skipConfirmAndProceed(url, nextBtn) {
   // to the options screen the instant the real fetch resolves.
   nextBtn.disabled = true;
   nextBtn.classList.add("loading");
+  const progressLabel = $("url-fetch-progress");
+  progressLabel.textContent = "0%";
+  progressLabel.hidden = false;
+  const progressHandler = (payload) => { progressLabel.textContent = `${payload.percent}%`; };
+  Api.on("video_fetch_progress", progressHandler);
+
   let result;
   try {
     result = await Api.fetchVideoInfo(url);
   } catch (err) {
     result = { ok: false, error: "Une erreur est survenue." };
   }
+  Api.off("video_fetch_progress", progressHandler);
+  progressLabel.hidden = true;
   nextBtn.classList.remove("loading");
   nextBtn.disabled = false;
 

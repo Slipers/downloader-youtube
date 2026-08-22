@@ -24,13 +24,20 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.25"
+APP_VERSION = "1.26"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.26",
+        "date": "22 août 2026",
+        "bullets": [
+            "La flèche qui tournait pendant la récupération d'une vidéo affiche maintenant un pourcentage de progression.",
+        ],
+    },
     {
         "version": "1.25",
         "date": "22 août 2026",

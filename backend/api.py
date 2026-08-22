@@ -1,5 +1,6 @@
 """Bridge class exposed to the JS frontend via pywebview's js_api."""
 import json
+import math
 import os
 import re
 import shutil
@@ -94,15 +95,36 @@ class Api:
     def fetch_video_info(self, url: str):
         if not self.is_valid_youtube_url(url):
             return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube, TikTok ou Instagram valide."}
-        # Fetching before the runtime lands would silently cap the quality list
-        # at 360p, so wait for the startup install to finish rather than show a
-        # ladder the video doesn't actually have.
-        self.ensure_js_runtime()
+
+        # There's no real byte-level progress for a metadata fetch (it's one
+        # blocking call, not a download), so this reports elapsed time against
+        # a typical duration instead -- an asymptotic curve that closes in on
+        # 92% but deliberately never claims completion on its own. The actual
+        # 100% only ever comes from the real result landing, below.
+        stop_ticker = threading.Event()
+
+        def ticker():
+            start = time.time()
+            while not stop_ticker.wait(0.15):
+                elapsed = time.time() - start
+                percent = round(92 * (1 - math.exp(-elapsed / 4)))
+                self._push("video_fetch_progress", {"percent": percent})
+
+        ticker_thread = threading.Thread(target=ticker, daemon=True)
+        ticker_thread.start()
         try:
+            # Fetching before the runtime lands would silently cap the quality
+            # list at 360p, so wait for the startup install to finish rather
+            # than show a ladder the video doesn't actually have.
+            self.ensure_js_runtime()
             info = downloader.get_video_info(url.strip())
+            self._push("video_fetch_progress", {"percent": 100})
             return {"ok": True, "data": info}
         except Exception as exc:
             return {"ok": False, "error": self._friendly_error(exc)}
+        finally:
+            stop_ticker.set()
+            ticker_thread.join(timeout=1)
 
     def _friendly_error(self, exc: Exception) -> str:
         message = str(exc)

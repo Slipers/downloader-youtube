@@ -359,7 +359,13 @@ body {
 .btn-arrow:hover:not(:disabled) { transform: scale(1.08); }
 .btn-arrow:disabled { opacity: .35; cursor: not-allowed; }
 .btn-arrow.loading { opacity: .7; }
-.btn-arrow.loading svg { animation: spin .8s linear infinite; }
+
+.url-fetch-progress {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
 
 .screen-header {
   display: flex;
