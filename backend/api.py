@@ -158,9 +158,11 @@ class Api:
         return {"installed": js_runtime.is_installed()}
 
     def ensure_js_runtime(self):
-        """Downloads the JS runtime if missing. Without it YouTube only offers
-        360p and below, so this runs on startup rather than on request."""
+        """Downloads the JS runtime if missing, and makes sure its PO token
+        server is running. Without it YouTube only offers 360p and below, so
+        this runs on startup rather than on request."""
         if js_runtime.is_installed():
+            js_runtime.ensure_server_running()
             return {"ok": True, "installed": True}
 
         def on_progress(stage, percent):
@@ -168,6 +170,7 @@ class Api:
 
         try:
             js_runtime.install(on_progress)
+            js_runtime.ensure_server_running()
             self._push("js_runtime_ready", {})
             return {"ok": True, "installed": True}
         except Exception as exc:

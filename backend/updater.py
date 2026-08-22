@@ -24,13 +24,21 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.24"
+APP_VERSION = "1.25"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.25",
+        "date": "22 août 2026",
+        "bullets": [
+            "Correction d'un bug important : la récupération d'une vidéo pouvait prendre très longtemps, voire échouer complètement, et ne proposait parfois que du 144p.",
+            "Le moteur JavaScript nécessaire pour les hautes résolutions tourne maintenant en arrière-plan en continu au lieu d'être relancé à chaque vidéo — les qualités jusqu'à la 4K reviennent, et la récupération d'une vidéo est nettement plus rapide.",
+        ],
+    },
     {
         "version": "1.24",
         "date": "21 août 2026",

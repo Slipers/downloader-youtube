@@ -8,6 +8,7 @@ import webview
 from backend.api import Api
 from backend.link_server import LinkServer
 from backend.window_utils import focus_window
+from backend import js_runtime
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 FRONTEND_INDEX = BASE_DIR / "frontend" / "index.html"
@@ -78,6 +79,7 @@ def main():
     window.events.loaded += on_loaded
     threading.Thread(target=link_server.serve_forever, daemon=True).start()
     window.events.closed += link_server.shutdown
+    window.events.closed += js_runtime.stop_server
 
     webview.start(icon=str(ICON_PATH) if ICON_PATH.exists() else None)
 
