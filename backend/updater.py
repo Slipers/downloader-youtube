@@ -24,13 +24,22 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.26"
+APP_VERSION = "1.27"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.27",
+        "date": "22 août 2026",
+        "bullets": [
+            "Le correctif de la version 1.25 ne s'activait en réalité jamais une fois l'application installée (un détail technique liée à l'empaquetage empêchait silencieusement son chargement) — la lenteur et le 144p occasionnel qui persistaient malgré cette mise à jour sont maintenant réellement corrigés.",
+            "Les vidéos exportées en MP4 utilisent maintenant systématiquement un codec compatible avec les logiciels de montage (Premiere Pro, etc.) au lieu d'un codec qui pouvait être refusé à l'import (« type de compression non prise en charge »).",
+            "Le pourcentage affiché pendant la récupération d'une vidéo est maintenant un anneau de progression autour de la flèche, plus lisible que le texte flottant précédent.",
+        ],
+    },
     {
         "version": "1.26",
         "date": "22 août 2026",

@@ -805,15 +805,22 @@ function proceedToOptions() {
   }, 360);
 }
 
+const URL_FETCH_RING_CIRCUMFERENCE = 144.5; // 2 * PI * r(23), matches the SVG in index.html
+
 async function skipConfirmAndProceed(url, nextBtn) {
   // "Toujours confirmer la vidéo" is off: no modal flash at all, straight
-  // to the options screen the instant the real fetch resolves.
+  // to the options screen the instant the real fetch resolves. The button's
+  // arrow fades into a percentage ringed by real progress instead.
   nextBtn.disabled = true;
   nextBtn.classList.add("loading");
   const progressLabel = $("url-fetch-progress");
-  progressLabel.textContent = "0%";
-  progressLabel.hidden = false;
-  const progressHandler = (payload) => { progressLabel.textContent = `${payload.percent}%`; };
+  const ringFill = $("url-fetch-ring-fill");
+  const setPercent = (pct) => {
+    progressLabel.textContent = `${pct}%`;
+    ringFill.style.strokeDashoffset = String(URL_FETCH_RING_CIRCUMFERENCE * (1 - pct / 100));
+  };
+  setPercent(0);
+  const progressHandler = (payload) => setPercent(payload.percent);
   Api.on("video_fetch_progress", progressHandler);
 
   let result;
@@ -823,7 +830,6 @@ async function skipConfirmAndProceed(url, nextBtn) {
     result = { ok: false, error: "Une erreur est survenue." };
   }
   Api.off("video_fetch_progress", progressHandler);
-  progressLabel.hidden = true;
   nextBtn.classList.remove("loading");
   nextBtn.disabled = false;
 

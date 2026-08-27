@@ -10,6 +10,10 @@ import yt_dlp
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
 from . import js_runtime
+# Registers the bgutil PO token HTTP provider with yt-dlp. Vendored (not a
+# real plugin install) because yt-dlp's own plugin discovery doesn't work
+# once frozen -- see backend/vendor_pot_provider/__init__.py for why.
+from .vendor_pot_provider import getpot_bgutil_http  # noqa: F401
 
 QUALITY_TIERS = {
     "auto": {"height": None, "label": "Auto", "recommended_kbps": None},
@@ -263,16 +267,34 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     height_filter = "" if height is None else f"[height<={height}]"
     reencode = _needs_reencode(bitrate, tier["recommended_kbps"])
 
+    # MP4 is the format people pick specifically to open elsewhere (video
+    # editors, older devices) -- but YouTube only offers H.264 up to 1080p;
+    # above that (and often at 1080p too) "best" silently means VP9 or AV1
+    # muxed into an .mp4 container, which plays fine in a browser or VLC but
+    # many NLEs (Premiere Pro included) reject outright as "unsupported
+    # compression" since the container name promises H.264 they can decode.
+    # Preferring avc1/mp4a first, with the unfiltered format as a fallback
+    # for cases where YouTube doesn't offer H.264 at all, keeps the common
+    # case genuinely compatible without breaking playback when it can't be.
+    codec_filter = "[vcodec^=avc1]" if container == "mp4" else ""
+    audio_codec_filter = "[acodec^=mp4a]" if container == "mp4" else ""
+
     # A trailing unfiltered "best" catches sites like TikTok, where a portrait
     # video's *width* is its short side -- yt-dlp still reports "height" as
     # the long side, so a height<=X tier filter can exclude every available
     # format and fail outright instead of just settling for what exists.
     if export_type == "video_only":
-        opts["format"] = f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}/best"
+        opts["format"] = (
+            f"bestvideo{codec_filter}{height_filter}{fps_filter}/"
+            f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}/best"
+        )
         if reencode or output_format:
             opts["postprocessors"] = [{"key": "FFmpegVideoConvertor", "preferedformat": container}]
     else:  # video_audio
-        opts["format"] = f"bestvideo{height_filter}{fps_filter}+bestaudio/best{height_filter}{fps_filter}/best"
+        opts["format"] = (
+            f"bestvideo{codec_filter}{height_filter}{fps_filter}+bestaudio{audio_codec_filter}/"
+            f"bestvideo{height_filter}{fps_filter}+bestaudio/best{height_filter}{fps_filter}/best"
+        )
         opts["merge_output_format"] = container
 
     if reencode:

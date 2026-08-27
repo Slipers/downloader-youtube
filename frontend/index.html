@@ -89,9 +89,13 @@
         </div>
       </div>
       <div class="input-row url-submit-row">
-        <span id="url-fetch-progress" class="url-fetch-progress" hidden></span>
         <button id="btn-url-next" class="btn-arrow" disabled aria-label="Étape suivante">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <svg class="btn-arrow-ring" viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="btn-arrow-ring-track" cx="26" cy="26" r="23"></circle>
+            <circle id="url-fetch-ring-fill" class="btn-arrow-ring-fill" cx="26" cy="26" r="23"></circle>
+          </svg>
+          <svg class="btn-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <span id="url-fetch-progress" class="btn-arrow-percent"></span>
         </button>
       </div>
       <p id="url-error" class="error-text" hidden></p>
