@@ -1281,7 +1281,12 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   color: transparent;
 }
 
-.update-corner-toast {
+/* Scoped to :not([hidden]) -- an unconditional `display: flex` here would
+   outrank the native [hidden] UA default, so the toast would show from page
+   load with an empty version number, whether or not an update exists.
+   (Same bug class as .platform-picker-menu above.) */
+.update-corner-toast[hidden] { display: none; }
+.update-corner-toast:not([hidden]) {
   position: absolute;
   bottom: 20px;
   right: 20px;
