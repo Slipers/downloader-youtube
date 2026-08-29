@@ -463,13 +463,15 @@ async function checkForUpdate() {
   } catch (err) {
     return;
   }
-  if (!result?.available) return;
+  // Require a real version string too, not just `available` -- a malformed
+  // or stale response should never be able to show the toast with nothing
+  // to actually show.
+  if (!result?.available || !result.version) return;
 
   pendingUpdateInfo = result;
   $("update-version-label").textContent = `v${result.version}`;
   $("update-corner-version").textContent = result.version;
   $("update-corner-toast").hidden = false;
-  $("app-version-tag").hidden = true;
 }
 
 const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000;

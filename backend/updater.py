@@ -23,13 +23,21 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.29"
+APP_VERSION = "1.30"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.30",
+        "date": "29 août 2026",
+        "bullets": [
+            "Garde supplémentaire pour empêcher l'encart de mise à jour d'apparaître sans une vraie mise à jour disponible.",
+            "Le numéro de version installée est maintenant en bas à gauche au lieu du bas à droite, pour ne plus se chevaucher avec l'encart de mise à jour.",
+        ],
+    },
     {
         "version": "1.29",
         "date": "29 août 2026",

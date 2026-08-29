@@ -176,7 +176,7 @@ body {
 .app-version-tag {
   position: absolute;
   bottom: 10px;
-  right: 14px;
+  left: 14px;
   z-index: 5;
   font-size: 11px;
   color: var(--text-2);
