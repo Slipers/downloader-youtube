@@ -372,11 +372,18 @@ async function onInstallBrowser(browser, btn) {
 let pendingUpdateInfo = null;
 
 function initAppUpdateModal() {
-  // Deliberately no way to dismiss the "update available" state (no decline
-  // button, no backdrop-click handler anywhere in this app) -- an available
-  // update blocks the app until installed. The error state still gets a
-  // close button so a transient failure (e.g. no internet) doesn't brick
-  // the app permanently; it'll just ask again next launch.
+  // Updates are optional: the corner toast (see checkForUpdate) is the only
+  // thing that appears on its own, and it has no dismiss button by design --
+  // it just sits there, out of the way, for as long as an update is pending.
+  // This modal only opens when the user actually clicks it, so it gets a
+  // real way out too now ("Plus tard" below).
+  $("update-corner-btn").addEventListener("click", () => {
+    $("update-ask").hidden = false;
+    $("update-downloading").hidden = true;
+    $("update-error").hidden = true;
+    openModal("modal-app-update");
+  });
+  $("update-later").addEventListener("click", () => closeModal("modal-app-update"));
   $("update-error-close").addEventListener("click", () => closeModal("modal-app-update"));
   $("update-accept").addEventListener("click", onAcceptUpdate);
 }
@@ -459,17 +466,17 @@ async function checkForUpdate() {
   if (!result?.available) return;
 
   pendingUpdateInfo = result;
-  $("update-ask").hidden = false;
-  $("update-downloading").hidden = true;
-  $("update-error").hidden = true;
   $("update-version-label").textContent = `v${result.version}`;
-  openModal("modal-app-update");
+  $("update-corner-version").textContent = result.version;
+  $("update-corner-toast").hidden = false;
+  $("app-version-tag").hidden = true;
 }
 
 const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000;
 
 async function onAcceptUpdate() {
   if (!pendingUpdateInfo) return;
+  $("update-corner-toast").hidden = true;
   $("update-ask").hidden = true;
   $("update-downloading").hidden = false;
   $("update-downloading-title").textContent = "Téléchargement de la mise à jour…";
@@ -809,14 +816,12 @@ const URL_FETCH_RING_CIRCUMFERENCE = 144.5; // 2 * PI * r(23), matches the SVG i
 
 async function skipConfirmAndProceed(url, nextBtn) {
   // "Toujours confirmer la vidéo" is off: no modal flash at all, straight
-  // to the options screen the instant the real fetch resolves. The button's
-  // arrow fades into a percentage ringed by real progress instead.
+  // to the options screen the instant the real fetch resolves. The arrow
+  // spins like before, ringed by real progress around it.
   nextBtn.disabled = true;
   nextBtn.classList.add("loading");
-  const progressLabel = $("url-fetch-progress");
   const ringFill = $("url-fetch-ring-fill");
   const setPercent = (pct) => {
-    progressLabel.textContent = `${pct}%`;
     ringFill.style.strokeDashoffset = String(URL_FETCH_RING_CIRCUMFERENCE * (1 - pct / 100));
   };
   setPercent(0);

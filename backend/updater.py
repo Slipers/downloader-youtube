@@ -24,13 +24,21 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.27"
+APP_VERSION = "1.28"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.28",
+        "date": "27 août 2026",
+        "bullets": [
+            "Les mises à jour ne sont plus obligatoires : un petit encart discret en bas à droite propose de mettre à jour dès qu'une nouvelle version est disponible, sans bloquer l'application.",
+            "Correction du pourcentage affiché en récupérant une vidéo, qui pouvait sembler s'arrêter à 40-50% avant de passer directement à l'écran suivant — la flèche tourne à nouveau comme avant, avec l'anneau de progression autour.",
+        ],
+    },
     {
         "version": "1.27",
         "date": "22 août 2026",

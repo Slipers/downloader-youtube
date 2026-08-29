@@ -101,13 +101,21 @@ class Api:
         # a typical duration instead -- an asymptotic curve that closes in on
         # 92% but deliberately never claims completion on its own. The actual
         # 100% only ever comes from the real result landing, below.
+        #
+        # The time constant below is tuned for the common case: a warm PO
+        # token server (see js_runtime.py) makes a fetch take ~2-5s. It used
+        # to be tuned for the ~15-20s a cold/per-video subprocess spawn used
+        # to cost, which meant the real result now lands while this curve is
+        # still only around 40-50% -- looking broken rather than just fast.
+        # A rare cold-start fetch right after launch (~20s) still just sits
+        # near 92% for longer, which is the intended honest behavior.
         stop_ticker = threading.Event()
 
         def ticker():
             start = time.time()
             while not stop_ticker.wait(0.15):
                 elapsed = time.time() - start
-                percent = round(92 * (1 - math.exp(-elapsed / 4)))
+                percent = round(92 * (1 - math.exp(-elapsed / 1.3)))
                 self._push("video_fetch_progress", {"percent": percent})
 
         ticker_thread = threading.Thread(target=ticker, daemon=True)

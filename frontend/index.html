@@ -35,6 +35,12 @@
 
   <div id="app-version-tag" class="app-version-tag" aria-hidden="true"></div>
 
+  <div id="update-corner-toast" class="update-corner-toast" hidden>
+    <span class="update-corner-badge">Nouvelle version</span>
+    <span class="update-corner-text">v<span id="update-corner-version"></span> disponible</span>
+    <button type="button" id="update-corner-btn" class="update-corner-btn">Mettre à jour</button>
+  </div>
+
   <!-- Écran 1 : accueil -->
   <section id="screen-start" class="screen active">
     <div class="start-content">
@@ -95,7 +101,6 @@
             <circle id="url-fetch-ring-fill" class="btn-arrow-ring-fill" cx="26" cy="26" r="23"></circle>
           </svg>
           <svg class="btn-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          <span id="url-fetch-progress" class="btn-arrow-percent"></span>
         </button>
       </div>
       <p id="url-error" class="error-text" hidden></p>
@@ -423,9 +428,9 @@
         <span class="update-badge">Nouvelle version</span>
         <h3>Downloader Youtube <span id="update-version-label" class="update-version"></span></h3>
         <p class="modal-meta">Une nouvelle version de l'application est disponible avec des corrections et des améliorations.</p>
-        <p class="modal-meta update-mandatory-note">Cette mise à jour est nécessaire pour continuer à utiliser l'application.</p>
         <div class="modal-actions">
-          <button id="update-accept" class="btn-primary btn-full">Mettre à jour</button>
+          <button id="update-later" class="btn-secondary">Plus tard</button>
+          <button id="update-accept" class="btn-primary">Mettre à jour</button>
         </div>
       </div>
       <div id="update-downloading" class="ffmpeg-step" hidden>
