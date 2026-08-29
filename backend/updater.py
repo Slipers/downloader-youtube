@@ -1,17 +1,16 @@
 """Checks for a newer app build and swaps the installed files in place before
 relaunching -- all without the user having to re-run the installer by hand.
 
-Two update sources are checked, in order:
+Checked against **GitHub Releases** (`UPDATE_REPO`): each release's tag is
+the version (e.g. "v1.2.0") with an asset named "*-update.zip" containing the
+built `dist/DownloaderYoutube` folder (see README "Publier une mise à jour").
 
-1. **Local dev build** (`LOCAL_SOURCE_DIR`): while iterating on this exact
-   machine, a freshly rebuilt `dist/DownloaderYoutube` folder (with a
-   `version.txt` written alongside it) is picked up directly -- no network,
-   no hosting needed. This is what makes "click Update in the app" work
-   without ever handing over a new installer link.
-2. **GitHub Releases** (`UPDATE_REPO`): for real distribution once published.
-   Each release's tag is the version (e.g. "v1.2.0") with an asset named
-   "*-update.zip" containing the built `dist/DownloaderYoutube` folder
-   (see README "Publier une mise à jour"). Inactive until UPDATE_REPO is set.
+This used to also check a hardcoded local dev-build path as a zero-hosting
+shortcut while iterating -- removed after it caused a real false positive:
+the developer and the actual user of this app are the same machine, so an
+in-progress rebuild of `dist/DownloaderYoutube` for an unrelated reason could
+get picked up by the *installed* app as an "available update" it had no
+business seeing.
 """
 import json
 import os
@@ -24,13 +23,21 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.28"
+APP_VERSION = "1.29"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.29",
+        "date": "29 août 2026",
+        "bullets": [
+            "Correction d'un faux positif : l'application pouvait annoncer une mise à jour disponible (avec un numéro de version vide) alors qu'elle était déjà à jour, à cause d'un mécanisme de test qui n'aurait jamais dû s'appliquer en dehors du développement.",
+            "Design de l'encart de mise à jour revu : plus discret, cohérent avec le reste de l'interface.",
+        ],
+    },
     {
         "version": "1.28",
         "date": "27 août 2026",
@@ -214,10 +221,6 @@ CHANGELOG = [
     },
 ]
 
-# This machine's own dev build -- lets "Mettre à jour" work with zero hosting
-# while iterating locally. Harmless no-op on any other machine (path won't exist).
-LOCAL_SOURCE_DIR = Path(r"C:\Users\pasca\Desktop\Youtube Downloader Suite\dist\DownloaderYoutube")
-
 # Point this at the GitHub repo where releases are published, e.g. "yourname/downloader-youtube".
 UPDATE_REPO = "Slipers/downloader-youtube"
 RELEASES_API = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
@@ -236,27 +239,6 @@ def parse_version(v: str) -> tuple:
 
 def get_changelog() -> dict:
     return {"installed_version": APP_VERSION, "entries": CHANGELOG}
-
-
-def _check_local_source() -> dict | None:
-    version_file = LOCAL_SOURCE_DIR / "version.txt"
-    if not version_file.exists():
-        return None
-    try:
-        local_version = version_file.read_text(encoding="utf-8").strip()
-    except OSError:
-        return None
-    if parse_version(local_version) <= parse_version(APP_VERSION):
-        return None
-    return {
-        "available": True,
-        "checked": True,
-        "source": "local",
-        "version": local_version,
-        "current_version": APP_VERSION,
-        "path": str(LOCAL_SOURCE_DIR),
-        "notes": "Nouvelle version disponible (build local).",
-    }
 
 
 def _check_github() -> dict:
@@ -297,8 +279,8 @@ def _check_github() -> dict:
 
 
 def check_for_update() -> dict:
-    """Returns {available, checked, source, version, current_version, url|path, notes}."""
-    return _check_local_source() or _check_github()
+    """Returns {available, checked, source, version, current_version, url, notes}."""
+    return _check_github()
 
 
 def download_update(url: str, on_progress) -> Path:
@@ -316,8 +298,7 @@ def download_update(url: str, on_progress) -> Path:
 
 
 def apply_update_and_restart(update_info: dict, on_progress):
-    """Prepares the new files (extracting the zip if it's a remote update, or
-    using the local dev build directory as-is) and hands off to a detached
+    """Downloads and extracts the update zip, then hands off to a detached
     helper script that waits for this process to exit, mirrors the new files
     over the install directory, relaunches the app, then deletes itself."""
     if not is_frozen():
@@ -327,17 +308,12 @@ def apply_update_and_restart(update_info: dict, on_progress):
     exe_path = install_dir / "DownloaderYoutube.exe"
     pid = os.getpid()
 
-    if update_info.get("source") == "local":
-        new_files_dir = Path(update_info["path"])
-        cleanup_lines = ""  # never delete the dev build folder
-        on_progress(100)
-    else:
-        zip_path = download_update(update_info["url"], on_progress)
-        new_files_dir = Path(tempfile.gettempdir()) / "DownloaderYoutube_update_extracted"
-        shutil.rmtree(new_files_dir, ignore_errors=True)
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(new_files_dir)
-        cleanup_lines = f'rmdir /s /q "{new_files_dir}"\r\ndel "{zip_path}"\r\n'
+    zip_path = download_update(update_info["url"], on_progress)
+    new_files_dir = Path(tempfile.gettempdir()) / "DownloaderYoutube_update_extracted"
+    shutil.rmtree(new_files_dir, ignore_errors=True)
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(new_files_dir)
+    cleanup_lines = f'rmdir /s /q "{new_files_dir}"\r\ndel "{zip_path}"\r\n'
 
     log_path = Path(tempfile.gettempdir()) / "DownloaderYoutube_update.log"
     script_path = Path(tempfile.gettempdir()) / "DownloaderYoutube_apply_update.bat"

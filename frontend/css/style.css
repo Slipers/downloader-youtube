@@ -1288,9 +1288,9 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   z-index: 60;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px 10px 14px;
-  border-radius: var(--radius-md);
+  gap: 9px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
   backdrop-filter: blur(14px);
@@ -1301,36 +1301,33 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.update-corner-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: #fff;
-  background: var(--accent-grad);
-  padding: 3px 8px;
-  border-radius: 999px;
-  white-space: nowrap;
+.update-corner-dot {
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  animation: pulse-dot 1.6s ease-in-out infinite;
 }
 .update-corner-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-1);
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text-2);
   white-space: nowrap;
 }
 .update-corner-btn {
-  border: none;
+  border: 1px solid var(--accent-2);
   border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 12.5px;
+  padding: 5px 12px;
+  font-size: 12px;
   font-weight: 650;
-  color: #fff;
-  background: var(--accent-grad);
+  color: var(--text-0);
+  background: transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: transform .2s var(--ease);
+  transition: background .2s var(--ease), color .2s var(--ease);
 }
-.update-corner-btn:hover { transform: scale(1.05); }
+.update-corner-btn:hover { background: var(--accent-grad); color: #fff; border-color: transparent; }
 
 #update-installing-note {
   margin-top: 14px;
