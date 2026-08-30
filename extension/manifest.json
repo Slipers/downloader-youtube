@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Downloader Youtube — Lien rapide",
   "short_name": "Downloader Youtube",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Ajoute un bouton Télécharger sur YouTube, relié à l'application Downloader Youtube.",
   "icons": {
     "16": "icons/icon16.png",
@@ -38,10 +38,12 @@
     }
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "cookies"
   ],
   "host_permissions": [
-    "http://127.0.0.1:47990/*"
+    "http://127.0.0.1:47990/*",
+    "*://*.youtube.com/*"
   ],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu5KfYJX/UTsWZV0Bda5HJljoW4CsEo/d3tGczjcO8jORhnj9e2jxCcZuwVGTJiF2EDO1YGS6D+6tXByP7TtIjrgYsJftWfEf45sMEvbTifdRHy6XDamRZ8oxsILZslp2j7zAckpHBsyEqtS/coegSGyEJzeiXXMA/dj7HHau4k9kqw0AWbFJtLHwgaiAB7uISFsJs2SMAvCZhG1bOsC3GdSWzVCKV/GVL8jIYLPva6mLa4WtMmNyvraHc7jxRAv2q2GlRX0xwJunlwSkFZq3C5CBgWoPwu2fkgyI3vEOx8XNhhWe77X7z2oHpQj9KTXGebKFjdeYU0qPfeEpPah2vwIDAQAB"
 }

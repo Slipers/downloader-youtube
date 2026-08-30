@@ -9,7 +9,7 @@ from pathlib import Path
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
-from . import js_runtime
+from . import cookie_store, js_runtime
 # Registers the bgutil PO token HTTP provider with yt-dlp. Vendored (not a
 # real plugin install) because yt-dlp's own plugin discovery doesn't work
 # once frozen -- see backend/vendor_pot_provider/__init__.py for why.
@@ -70,16 +70,23 @@ def _cookies_opts(browser: str | None) -> dict:
 
 def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: str | None = None):
     """Runs `run(make_opts(cookie_extra))`, retrying with cookies if YouTube's bot-check
-    is hit. Priority: an imported cookies.txt file (most reliable, bypasses browser
-    decryption entirely), then `hint` (a browser already known to work), then no cookies,
-    then every supported browser in turn. Returns (result, source_used) where source_used
-    is 'file', a browser name, or None."""
+    is hit. Priority: an explicitly passed cookies.txt, then `hint` (a browser already
+    known to work), then no cookies at all, then the cookies the browser extension
+    synced, then every supported browser in turn. Returns (result, source_used) where
+    source_used is 'file', a browser name, or None."""
     order = []
     if cookies_file:
         order.append(("file", cookies_file))
     if hint:
         order.append(("browser", hint))
     order.append(("none", None))
+    # Tried before any browser extraction: these came from the extension via the
+    # browser's own cookie API, so they work even on Chrome/Edge builds whose
+    # App-Bound Encryption makes direct extraction impossible. Deliberately
+    # *after* ("none", None) so ordinary videos never send session cookies at all.
+    synced = cookie_store.path_if_present()
+    if synced and synced != cookies_file:
+        order.append(("file", synced))
     order += [("browser", b) for b in AUTO_COOKIE_ORDER if b != hint]
 
     last_exc = None

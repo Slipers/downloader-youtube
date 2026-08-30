@@ -33,6 +33,9 @@ async function link() {
     const data = await res.json();
     if (data.token) {
       await chrome.storage.local.set({ paired: true, token: data.token });
+      // Seed the app with cookies straight away so the very first download
+      // that needs them already has them.
+      syncCookies();
     }
     return { ok: true };
   } catch (err) {
@@ -66,8 +69,40 @@ async function getPairState() {
   return { paired: false };
 }
 
+// YouTube sometimes demands a signed-in session ("confirm you're not a robot").
+// The app can't read Chrome/Edge cookies itself -- App-Bound Encryption blocks
+// that by design -- but an extension gets them already decrypted through the
+// browser's own API, so we hand them over and the app stores them for yt-dlp.
+async function syncCookies() {
+  const { paired, token } = await chrome.storage.local.get(["paired", "token"]);
+  if (!paired || !token) return { ok: false, error: "not_paired" };
+
+  let cookies;
+  try {
+    cookies = await chrome.cookies.getAll({ domain: "youtube.com" });
+  } catch (err) {
+    return { ok: false, error: "cookies_unavailable" };
+  }
+  if (!cookies?.length) return { ok: false, error: "no_cookies" };
+
+  try {
+    const res = await fetchWithTimeout(`${APP_ORIGIN}/cookies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, cookies }),
+    });
+    if (!res.ok) return { ok: false, error: "sync_failed" };
+    return await res.json();
+  } catch (err) {
+    return { ok: false, error: "app_not_running" };
+  }
+}
+
 async function openDownload(url) {
   const { token } = await chrome.storage.local.get("token");
+  // Refresh before handing the URL over, so the app has current cookies by the
+  // time it starts fetching -- awaited so it can't lose the race.
+  await syncCookies();
   try {
     const res = await fetchWithTimeout(`${APP_ORIGIN}/open-download`, {
       method: "POST",
@@ -96,6 +131,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message?.type === "GET_PAIR_STATE") {
     getPairState().then(sendResponse);
+    return true;
+  }
+  if (message?.type === "SYNC_COOKIES") {
+    syncCookies().then(sendResponse);
     return true;
   }
   return false;

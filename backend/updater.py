@@ -23,13 +23,22 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.31"
+APP_VERSION = "1.32"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.32",
+        "date": "29 août 2026",
+        "bullets": [
+            "Les vidéos nécessitant une connexion à YouTube se téléchargent maintenant toutes seules : l'extension navigateur transmet la session à l'application automatiquement, sans aucune manipulation.",
+            "Plus besoin de fermer le navigateur ni d'importer un fichier de cookies — la protection de Chrome/Edge qui empêchait l'application de lire la connexion est désormais contournée proprement, via l'API officielle du navigateur.",
+            "Important : après cette mise à jour, rechargez l'extension une fois dans la page des extensions du navigateur (icône ↻) pour qu'elle obtienne la nouvelle autorisation.",
+        ],
+    },
     {
         "version": "1.31",
         "date": "29 août 2026",

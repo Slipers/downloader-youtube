@@ -9,6 +9,9 @@ APP_DIR = Path.home() / "AppData" / "Local" / "DownloaderYoutubeer"
 SETTINGS_FILE = APP_DIR / "settings.json"
 FFMPEG_DIR = APP_DIR / "ffmpeg"
 JS_RUNTIME_DIR = APP_DIR / "jsruntime"
+# YouTube cookies pushed by the browser extension (Netscape format, the one
+# yt-dlp reads). Written only by link_server's /cookies route.
+COOKIES_FILE = APP_DIR / "cookies.txt"
 
 DEFAULT_DOWNLOAD_DIR = Path.home() / "Downloads" / "YouTube"
 

@@ -138,7 +138,19 @@ function scheduleInjection() {
   setInterval(injectButton, 2000);
 }
 
+// Being on a YouTube page is the moment the session cookies are guaranteed
+// current, so let the app refresh its copy -- that way a download that needs
+// them works even if it's started from the app rather than from this button.
+function requestCookieSync() {
+  try {
+    chrome.runtime.sendMessage({ type: "SYNC_COOKIES" }, () => void chrome.runtime.lastError);
+  } catch (err) {
+    /* extension context torn down (e.g. mid-reload) -- nothing to do */
+  }
+}
+
 refreshPairState();
+requestCookieSync();
 scheduleInjection();
 document.addEventListener("yt-navigate-finish", () => {
   setTimeout(injectButton, 300);

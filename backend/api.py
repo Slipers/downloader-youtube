@@ -136,17 +136,26 @@ class Api:
 
     def _friendly_error(self, exc: Exception) -> str:
         message = str(exc)
-        if downloader.is_decrypt_blocked_error(message):
+        # Both cases below now mean the same thing for the user: the automatic
+        # authentication didn't land. The extension normally supplies the
+        # cookies (see backend/cookie_store.py), so the actionable fix is to
+        # get it installed/linked and to be signed in -- not to fiddle with
+        # browser processes, which never helped against App-Bound Encryption.
+        if (
+            downloader.is_decrypt_blocked_error(message)
+            or downloader.is_bot_check_error(message)
+            or downloader.is_cookie_extraction_error(message)
+        ):
+            if not config.load_settings().get("paired"):
+                return (
+                    "Cette vidéo nécessite une connexion à YouTube. Installez l'extension "
+                    "navigateur depuis les Paramètres et liez-la : l'application récupérera "
+                    "alors la connexion automatiquement, sans autre manipulation."
+                )
             return (
-                "Cette vidéo nécessite une connexion à YouTube, et vos navigateurs installés "
-                "protègent leurs cookies d'une façon que l'application ne peut pas déchiffrer "
-                "automatiquement (fermer le navigateur ne suffit pas dans ce cas)."
-            )
-        if downloader.is_bot_check_error(message) or downloader.is_cookie_extraction_error(message):
-            return (
-                "Cette vidéo nécessite une vérification de connexion à YouTube. "
-                "L'application a essayé de s'authentifier automatiquement mais n'y est pas arrivée — "
-                "fermez complètement votre navigateur (y compris les processus en arrière-plan) puis réessayez."
+                "Cette vidéo nécessite une connexion à YouTube. Ouvrez une page YouTube dans "
+                "le navigateur où l'extension est installée, en étant bien connecté à votre "
+                "compte, puis réessayez — l'application se synchronisera toute seule."
             )
         return f"Impossible de récupérer la vidéo : {message}"
 

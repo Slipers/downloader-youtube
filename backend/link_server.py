@@ -7,7 +7,7 @@ import json
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config
+from . import config, cookie_store
 
 ALLOWED_ORIGIN = f"chrome-extension://{config.EXTENSION_ID}"
 
@@ -63,6 +63,20 @@ class LinkRequestHandler(BaseHTTPRequestHandler):
             if self.server.api:
                 self.server.api.on_extension_linked()
             self._send_json(200, {"ok": True, "token": token})
+            return
+
+        if self.path == "/cookies":
+            settings = config.load_settings()
+            valid = bool(settings.get("paired")) and data.get("token") == settings.get("pairing_token")
+            if not valid:
+                self._send_json(401, {"ok": False})
+                return
+            try:
+                stored = cookie_store.save(data.get("cookies") or [])
+            except OSError:
+                self._send_json(500, {"ok": False})
+                return
+            self._send_json(200, {"ok": True, "stored": stored})
             return
 
         if self.path == "/open-download":
