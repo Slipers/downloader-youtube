@@ -64,16 +64,59 @@ def is_decrypt_blocked_error(message: str) -> bool:
     return "failed to decrypt" in (message or "").lower()
 
 
+def needs_signed_in_retry(message: str) -> bool:
+    """True when an anonymous attempt failed in a way a signed-in session fixes.
+
+    YouTube doesn't only answer "sign in to confirm you're not a bot" any more.
+    For some videos it silently withholds the real stream URLs from an
+    anonymous client -- the extraction still "succeeds" but the media fetch
+    then returns 403, or the only surviving format is the legacy muxed 360p
+    one, or the client is pushed onto SABR streaming and the formats come back
+    with no URL at all. Measured on a real video: every player client failed
+    anonymously, and every one of them succeeded with the session cookies.
+    """
+    lowered = (message or "").lower()
+    return (
+        is_bot_check_error(lowered)
+        or "http error 403" in lowered
+        or "requested format is not available" in lowered
+        or "only images are available" in lowered
+        or "downloaded file is empty" in lowered
+        or "the page needs to be reloaded" in lowered
+    )
+
+
+# Legacy progressive itags: the ones YouTube still hands an anonymous client
+# when it withholds the adaptive (real quality) ladder.
+_MUXED_FALLBACK_ITAGS = {"18", "22"}
+
+
+def has_full_quality_ladder(info: dict) -> bool:
+    """False when extraction came back stripped down to the legacy muxed
+    format(s) only -- i.e. the adaptive ladder was withheld. Retrying such a
+    result with cookies is what gets the real qualities back, instead of
+    quietly offering the user 360p for a 1080p video."""
+    video_formats = [
+        f for f in (info.get("formats") or [])
+        if f.get("vcodec") not in (None, "none")
+    ]
+    if not video_formats:
+        return False
+    return any(str(f.get("format_id")) not in _MUXED_FALLBACK_ITAGS for f in video_formats)
+
+
 def _cookies_opts(browser: str | None) -> dict:
     return {"cookiesfrombrowser": (browser,)} if browser else {}
 
 
-def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: str | None = None):
-    """Runs `run(make_opts(cookie_extra))`, retrying with cookies if YouTube's bot-check
-    is hit. Priority: an explicitly passed cookies.txt, then `hint` (a browser already
-    known to work), then no cookies at all, then the cookies the browser extension
-    synced, then every supported browser in turn. Returns (result, source_used) where
-    source_used is 'file', a browser name, or None."""
+def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: str | None = None,
+                       accept=None):
+    """Runs `run(make_opts(cookie_extra))`, retrying with cookies when an anonymous
+    attempt fails (or, via `accept`, succeeds but comes back degraded). Priority: an
+    explicitly passed cookies.txt, then `hint` (a browser already known to work), then
+    no cookies at all, then the cookies the browser extension synced, then every
+    supported browser in turn. Returns (result, source_used) where source_used is
+    'file', a browser name, or None."""
     order = []
     if cookies_file:
         order.append(("file", cookies_file))
@@ -90,6 +133,7 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
     order += [("browser", b) for b in AUTO_COOKIE_ORDER if b != hint]
 
     last_exc = None
+    rejected = None  # a result that worked but came back degraded
     for kind, value in order:
         if kind == "file":
             extra = {"cookiefile": value}
@@ -100,11 +144,23 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
         opts = make_opts(extra)
         try:
             result = run(opts)
-            return result, (value if kind != "none" else None)
         except Exception as exc:
             last_exc = exc
-            if kind == "none" and not is_bot_check_error(str(exc)):
+            if kind == "none" and not needs_signed_in_retry(str(exc)):
                 raise
+            continue
+
+        source = value if kind != "none" else None
+        if accept is None or accept(result):
+            return result, source
+        # Worked, but the caller says it's not good enough (e.g. the quality
+        # ladder was withheld). Keep it as a fallback and try a signed-in
+        # source -- never fail outright over it.
+        if rejected is None:
+            rejected = (result, source)
+
+    if rejected is not None:
+        return rejected
     raise last_exc
 
 
@@ -145,7 +201,9 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=False)
 
-    info, cookies_browser_used = _with_auto_cookies(make_opts, run, cookies_file=cookies_file)
+    info, cookies_browser_used = _with_auto_cookies(
+        make_opts, run, cookies_file=cookies_file, accept=has_full_quality_ladder,
+    )
 
     formats = info.get("formats") or []
     video_formats = [f for f in formats if f.get("vcodec") not in (None, "none")]

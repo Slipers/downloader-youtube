@@ -23,13 +23,22 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.32"
+APP_VERSION = "1.33"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.33",
+        "date": "4 septembre 2026",
+        "bullets": [
+            "Correction des vidéos qui refusaient de se télécharger avec une erreur « HTTP Error 403 » : l'application réessaie maintenant automatiquement avec votre session YouTube quand une vidéo l'exige, au lieu d'abandonner.",
+            "Certaines vidéos ne proposaient que du 360p alors qu'elles existent en HD : l'application détecte désormais ce cas et récupère la vraie liste des qualités toute seule.",
+            "Le moteur nécessaire aux hautes résolutions démarre maintenant dès l'ouverture de l'application, ce qui réduit nettement l'attente sur la première vidéo.",
+        ],
+    },
     {
         "version": "1.32",
         "date": "29 août 2026",

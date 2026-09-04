@@ -63,6 +63,15 @@ def main():
         focus_window(WINDOW_TITLE)
         return
 
+    # Kicked off here rather than from the frontend's init: the PO token server
+    # takes a good while to boot (it loads some heavy JS dependencies), and the
+    # first video fetch has to wait for it. Starting it the moment the process
+    # does -- in parallel with building the window -- buys back every second
+    # the UI spends starting up, which is usually enough for it to be ready
+    # before the user has finished pasting a link.
+    if js_runtime.is_installed():
+        threading.Thread(target=js_runtime.ensure_server_running, daemon=True).start()
+
     window = webview.create_window(
         WINDOW_TITLE,
         str(FRONTEND_INDEX),
