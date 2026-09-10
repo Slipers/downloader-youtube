@@ -23,13 +23,20 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.34"
+APP_VERSION = "1.35"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.35",
+        "date": "10 septembre 2026",
+        "bullets": [
+            "Téléchargements plus rapides : les vidéos sont maintenant récupérées par blocs successifs plutôt qu'en une seule connexion, ce qui contourne en partie le bridage appliqué par YouTube. Débit médian environ doublé lors des mesures.",
+        ],
+    },
     {
         "version": "1.34",
         "date": "10 septembre 2026",

@@ -30,6 +30,17 @@ RECOMMENDED_AUDIO_KBPS = 192
 CONCURRENT_FRAGMENTS = 16
 ROLLING_WINDOW_SECONDS = 5
 
+# YouTube throttles a single long-lived connection after an initial burst, so
+# fetching the stream as a series of ranged requests keeps it in that faster
+# opening window instead. Measured over fresh (non-CDN-cached) videos, this
+# roughly doubled the median throughput -- though the spread between videos is
+# far larger than the effect, because the real ceiling is YouTube's own
+# per-video throttling rather than the connection.
+# The size matters: 5MB measured *worse* than no chunking (per-request
+# overhead) and 64MB lost the benefit again, so this sits in the middle of the
+# band that measured well.
+HTTP_CHUNK_SIZE = 10 * 1024 * 1024
+
 VIDEO_CONTAINERS = ["mp4", "mkv", "webm"]
 AUDIO_FORMATS = ["mp3", "m4a", "wav", "opus"]
 
@@ -303,6 +314,7 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
         "outtmpl": {"default": "%(title)s.%(ext)s"},
         "restrictfilenames": False,
         "concurrent_fragment_downloads": CONCURRENT_FRAGMENTS,
+        "http_chunk_size": HTTP_CHUNK_SIZE,
         "retries": 10,
         "fragment_retries": 10,
     }
