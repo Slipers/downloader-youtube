@@ -19,17 +19,29 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.35"
+APP_VERSION = "1.36"
+
+EXE_NAME = "DownloaderYoutube.exe"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.36",
+        "date": "10 septembre 2026",
+        "bullets": [
+            "Correction d'un bug critique : dans de rares cas, une mise à jour pouvait supprimer entièrement l'application au lieu de la remplacer, laissant un raccourci mort sur le Bureau.",
+            "L'installation n'est désormais jamais remplacée sans avoir vérifié au préalable que les nouveaux fichiers sont bien présents et complets ; en cas de doute, la mise à jour est annulée et la version actuelle est relancée intacte.",
+            "Il n'est plus possible de lancer deux mises à jour en même temps, ce qui était à l'origine du problème.",
+        ],
+    },
     {
         "version": "1.35",
         "date": "10 septembre 2026",
@@ -352,18 +364,34 @@ def apply_update_and_restart(update_info: dict, on_progress):
         raise RuntimeError("La mise à jour automatique n'est disponible que depuis la version installée.")
 
     install_dir = Path(sys.executable).resolve().parent
-    exe_path = install_dir / "DownloaderYoutube.exe"
+    exe_path = install_dir / EXE_NAME
     pid = os.getpid()
 
     zip_path = download_update(update_info["url"], on_progress)
-    new_files_dir = Path(tempfile.gettempdir()) / "DownloaderYoutube_update_extracted"
+    # Unique per run. These used to be fixed paths, which let two overlapping
+    # updates share them: the first one's cleanup deleted the second one's
+    # extracted files, and the second one's robocopy /MIR then mirrored an
+    # empty directory over the install -- destroying the installation
+    # outright. Never reuse a fixed path for something /MIR reads from.
+    run_token = f"{pid}_{int(time.time())}"
+    temp_dir = Path(tempfile.gettempdir())
+    new_files_dir = temp_dir / f"DownloaderYoutube_update_{run_token}"
     shutil.rmtree(new_files_dir, ignore_errors=True)
     with zipfile.ZipFile(zip_path, "r") as zf:
         zf.extractall(new_files_dir)
+
+    # Refuse to hand /MIR a source that isn't a real build. Checked again in
+    # the script itself, since the gap between here and the copy is exactly
+    # where the directory could go missing (temp cleanup, a stray cleanup
+    # from another run).
+    if not (new_files_dir / EXE_NAME).exists():
+        shutil.rmtree(new_files_dir, ignore_errors=True)
+        raise RuntimeError("Le fichier de mise à jour est incomplet — mise à jour annulée.")
+
     cleanup_lines = f'rmdir /s /q "{new_files_dir}"\r\ndel "{zip_path}"\r\n'
 
-    log_path = Path(tempfile.gettempdir()) / "DownloaderYoutube_update.log"
-    script_path = Path(tempfile.gettempdir()) / "DownloaderYoutube_apply_update.bat"
+    log_path = temp_dir / "DownloaderYoutube_update.log"
+    script_path = temp_dir / f"DownloaderYoutube_apply_update_{run_token}.bat"
     # Note: this is written to a .bat FILE and invoked as `cmd /c file.bat`, so
     # it's parsed exactly once by the invoked shell -- redirection operators
     # here must NOT be caret-escaped (that escaping is only needed when a
@@ -388,9 +416,27 @@ def apply_update_and_restart(update_info: dict, on_progress):
         f'echo [%date% %time%] clearing any other running copies >> "{log_path}"\r\n'
         'taskkill /F /IM DownloaderYoutube.exe >NUL 2>&1\r\n'
         "timeout /t 1 /nobreak >nul\r\n"
+        # The guard that matters: /MIR deletes anything in the destination
+        # that's missing from the source, so mirroring a vanished or partial
+        # source wipes the whole installation. If the new build isn't there,
+        # leave the install untouched, put the current version back on screen
+        # and stop -- a skipped update is recoverable, a deleted app is not.
+        f'if not exist "{new_files_dir}\\{EXE_NAME}" (\r\n'
+        f'  echo [%date% %time%] ABORT: update source missing >> "{log_path}"\r\n'
+        f'  start "" "{exe_path}"\r\n'
+        '  del "%~f0"\r\n'
+        "  exit /b 1\r\n"
+        ")\r\n"
         f'echo [%date% %time%] copying files >> "{log_path}"\r\n'
         f'robocopy "{new_files_dir}" "{install_dir}" /MIR /NFL /NDL /NJH /NJS >> "{log_path}" 2>&1\r\n'
         f'echo [%date% %time%] robocopy exit code %errorlevel% >> "{log_path}"\r\n'
+        # robocopy reports 8+ for genuine failures, which can mean a half-
+        # mirrored directory. Put the new files back over it rather than
+        # relaunching something that may be incomplete.
+        f'if %errorlevel% geq 8 (\r\n'
+        f'  echo [%date% %time%] robocopy failed, retrying without /MIR >> "{log_path}"\r\n'
+        f'  robocopy "{new_files_dir}" "{install_dir}" /E /NFL /NDL /NJH /NJS >> "{log_path}" 2>&1\r\n'
+        ")\r\n"
         f'start "" "{exe_path}"\r\n'
         f'echo [%date% %time%] relaunched >> "{log_path}"\r\n'
         f"{cleanup_lines}"

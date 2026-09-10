@@ -27,6 +27,8 @@ class Api:
     def __init__(self):
         self.window = None
         self._cancel_event = None
+        self._update_lock = threading.Lock()
+        self._updating = False
 
     def set_window(self, window):
         self.window = window
@@ -308,6 +310,14 @@ class Api:
         return updater.check_for_update()
 
     def start_app_update(self, update_info: dict):
+        # One update at a time, ever. Two overlapping runs each spawn their own
+        # detached copy script, and those used to race over the same temp
+        # files -- which is how an install could end up being mirrored from an
+        # already-cleaned-up source and deleted entirely.
+        with self._update_lock:
+            if self._updating:
+                return {"started": False, "reason": "already_running"}
+            self._updating = True
         threading.Thread(target=self._run_update, args=(update_info,), daemon=True).start()
         return {"started": True}
 
@@ -323,6 +333,11 @@ class Api:
             if self.window:
                 self.window.destroy()
         except Exception as exc:
+            # Only released on failure: on success the app is about to be
+            # replaced and restarted, and nothing should be able to start a
+            # second copy script in the meantime.
+            with self._update_lock:
+                self._updating = False
             self._push("update_error", {"error": str(exc)})
 
     def sync_extension_if_outdated(self):
