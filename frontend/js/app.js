@@ -194,6 +194,14 @@ function initSettingsModal() {
     Api.savePreference("sfx_enabled", state.sfxEnabled);
   });
 
+  const copyThumbToggle = $("toggle-copy-thumbnail");
+  copyThumbToggle.addEventListener("click", () => {
+    state.copyThumbnail = !state.copyThumbnail;
+    copyThumbToggle.classList.toggle("on", state.copyThumbnail);
+    copyThumbToggle.setAttribute("aria-checked", String(state.copyThumbnail));
+    Api.savePreference("copy_thumbnail", state.copyThumbnail);
+  });
+
   $("toggle-always-confirm-settings").addEventListener("click", () => {
     setAlwaysConfirmVideo(!state.alwaysConfirmVideo);
   });
@@ -1474,7 +1482,13 @@ function runDownload() {
     cleanup();
     setStep("download", "done");
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
-    showResult("success", "Téléchargement terminé", `Terminé en ${elapsed.toFixed(1)} s`, payload.filepath);
+    const done = `Terminé en ${elapsed.toFixed(1)} s`;
+    showResult(
+      "success",
+      "Téléchargement terminé",
+      payload.thumbnail_copied ? `${done} — miniature copiée dans le presse-papiers` : done,
+      payload.filepath,
+    );
     state.viaExtension = false;
     if (payload.total_downloads !== undefined) state.settings.total_downloads = payload.total_downloads;
   };
@@ -1517,6 +1531,7 @@ function runDownload() {
     cookies_browser_hint: state.videoInfo?.cookies_browser_used || null,
     overwrite: state.downloadOverwrite || false,
     custom_filename: state.downloadCustomFilename || null,
+    thumbnail_url: state.videoInfo?.thumbnail || null,
   });
 }
 
@@ -1845,6 +1860,7 @@ async function init() {
   state.confettiSeconds = settings.confetti_seconds || 5;
   state.sfxEnabled = settings.sfx_enabled !== false;
   state.alwaysConfirmVideo = settings.always_confirm_video !== false;
+  state.copyThumbnail = settings.copy_thumbnail === true;
   setSplashProgress(45);
 
   Api.getAppVersion().then((version) => {
@@ -1858,6 +1874,9 @@ async function init() {
   const sfxToggle = $("toggle-sfx");
   sfxToggle.classList.toggle("on", state.sfxEnabled);
   sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
+  const copyThumbToggle = $("toggle-copy-thumbnail");
+  copyThumbToggle.classList.toggle("on", state.copyThumbnail);
+  copyThumbToggle.setAttribute("aria-checked", String(state.copyThumbnail));
   [$("toggle-always-confirm"), $("toggle-always-confirm-settings")].forEach((toggle) => {
     toggle.classList.toggle("on", state.alwaysConfirmVideo);
     toggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));

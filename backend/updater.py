@@ -23,13 +23,20 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.33"
+APP_VERSION = "1.34"
 
 # Shown in the in-app "Nouveautés" panel. Kept as hand-written structured
 # bullets (not the raw GitHub release body) so the changelog UI never has to
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.34",
+        "date": "10 septembre 2026",
+        "bullets": [
+            "Nouvelle option dans les paramètres : « Copier la miniature ». Une fois activée, la miniature de la vidéo en haute résolution est placée dans le presse-papiers à la fin de chaque téléchargement, prête à être collée.",
+        ],
+    },
     {
         "version": "1.33",
         "date": "4 septembre 2026",

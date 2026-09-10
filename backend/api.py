@@ -11,7 +11,7 @@ from pathlib import Path
 import webview
 from yt_dlp.utils import DownloadCancelled
 
-from . import browsers, config, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
+from . import browsers, clipboard, config, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
 
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
@@ -57,7 +57,7 @@ class Api:
         allowed = {
             "show_preview", "last_quality", "last_fps", "last_export_type",
             "last_output_format", "confetti_seconds", "last_seen_version",
-            "sfx_enabled", "always_confirm_video",
+            "sfx_enabled", "always_confirm_video", "copy_thumbnail",
         }
         if key in allowed:
             config.save_settings({key: value})
@@ -257,9 +257,16 @@ class Api:
                 cookies_browser_hint=options.get("cookies_browser_hint"),
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
-            total = config.load_settings().get("total_downloads", 0) + 1
+            settings = config.load_settings()
+            total = settings.get("total_downloads", 0) + 1
             config.save_settings({"last_download_dir": options.get("dest_dir"), "total_downloads": total})
             result["total_downloads"] = total
+            # Opt-in convenience: never allowed to affect the download itself,
+            # hence the always-false-on-error contract in clipboard.py.
+            result["thumbnail_copied"] = bool(
+                settings.get("copy_thumbnail")
+                and clipboard.copy_image_from_url(options.get("thumbnail_url"))
+            )
             self._push("download_complete", result)
         except DownloadCancelled:
             self._push("download_cancelled", {})
