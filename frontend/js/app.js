@@ -194,6 +194,16 @@ function initSettingsModal() {
     Api.savePreference("sfx_enabled", state.sfxEnabled);
   });
 
+  const loginBtn = $("btn-youtube-login");
+  loginBtn.addEventListener("click", () => {
+    if (state.youtubeSignedIn) {
+      Api.signOutYoutube().then(() => renderYoutubeSession(false));
+    } else {
+      Api.openYoutubeLogin();
+    }
+  });
+  Api.on("youtube_session_changed", (payload) => renderYoutubeSession(!!payload.signed_in));
+
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.addEventListener("click", () => {
     state.copyThumbnail = !state.copyThumbnail;
@@ -425,6 +435,14 @@ async function openChangelogModal() {
     });
     changelogLoaded = true;
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
+}
+
+function renderYoutubeSession(signedIn) {
+  state.youtubeSignedIn = signedIn;
+  $("btn-youtube-login").textContent = signedIn ? "Se déconnecter" : "Se connecter";
+  $("youtube-session-hint").textContent = signedIn
+    ? "Connecté. Les vidéos réservées aux comptes connectés se téléchargent normalement."
+    : "Nécessaire uniquement pour les vidéos que YouTube réserve aux comptes connectés.";
 }
 
 function initSmoothWheelScroll(el) {
@@ -1874,6 +1892,9 @@ async function init() {
   const sfxToggle = $("toggle-sfx");
   sfxToggle.classList.toggle("on", state.sfxEnabled);
   sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
+  Api.getYoutubeSessionStatus()
+    .then((s) => renderYoutubeSession(!!s.signed_in))
+    .catch(() => {});
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.classList.toggle("on", state.copyThumbnail);
   copyThumbToggle.setAttribute("aria-checked", String(state.copyThumbnail));

@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.36"
+APP_VERSION = "1.37"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,14 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.37",
+        "date": "17 septembre 2026",
+        "bullets": [
+            "L'extension navigateur devient totalement facultative : plus besoin de l'installer, de la lier, ni de garder une page YouTube ouverte pour télécharger.",
+            "Nouveau bouton « Se connecter à YouTube » dans les paramètres : la connexion se fait directement dans l'application, une seule fois, et sert uniquement aux vidéos que YouTube réserve aux comptes connectés.",
+        ],
+    },
     {
         "version": "1.36",
         "date": "10 septembre 2026",

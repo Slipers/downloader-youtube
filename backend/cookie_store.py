@@ -13,6 +13,7 @@ module writes them in the Netscape format yt-dlp reads.
 """
 import os
 import tempfile
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from . import config
@@ -61,6 +62,31 @@ def _format_netscape(cookies: list) -> str:
             ])
         )
     return "\n".join(lines) + "\n"
+
+
+def from_simple_cookies(cookies) -> list:
+    """Converts the SimpleCookie objects pywebview hands back from a window
+    into the plain dicts `save` expects, so an in-app YouTube sign-in can feed
+    the same store the browser extension does."""
+    out = []
+    for cookie in cookies or []:
+        for name, morsel in cookie.items():
+            expires = 0
+            raw_expires = morsel.get("expires")
+            if raw_expires:
+                try:
+                    expires = int(parsedate_to_datetime(raw_expires).timestamp())
+                except (TypeError, ValueError):
+                    expires = 0  # treat unparseable as a session cookie
+            out.append({
+                "name": name,
+                "value": morsel.value,
+                "domain": morsel.get("domain") or "",
+                "path": morsel.get("path") or "/",
+                "secure": bool(morsel.get("secure")),
+                "expirationDate": expires,
+            })
+    return out
 
 
 def save(cookies: list) -> int:

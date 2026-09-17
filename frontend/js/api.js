@@ -102,6 +102,18 @@ const Api = {
     await apiReady;
     return window.pywebview.api.get_app_version();
   },
+  async getYoutubeSessionStatus() {
+    await apiReady;
+    return window.pywebview.api.get_youtube_session_status();
+  },
+  async openYoutubeLogin() {
+    await apiReady;
+    return window.pywebview.api.open_youtube_login();
+  },
+  async signOutYoutube() {
+    await apiReady;
+    return window.pywebview.api.sign_out_youtube();
+  },
   async getJsRuntimeStatus() {
     await apiReady;
     return window.pywebview.api.get_js_runtime_status();
