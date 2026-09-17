@@ -39,6 +39,7 @@ DEFAULTS = {
     "always_confirm_video": True,
     "last_rating_at": None,
     "copy_thumbnail": False,
+    "youtube_session_source": None,
 }
 
 

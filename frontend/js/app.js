@@ -197,12 +197,12 @@ function initSettingsModal() {
   const loginBtn = $("btn-youtube-login");
   loginBtn.addEventListener("click", () => {
     if (state.youtubeSignedIn) {
-      Api.signOutYoutube().then(() => renderYoutubeSession(false));
+      Api.signOutYoutube().then(() => renderYoutubeSession(false, null));
     } else {
       Api.openYoutubeLogin();
     }
   });
-  Api.on("youtube_session_changed", (payload) => renderYoutubeSession(!!payload.signed_in));
+  Api.on("youtube_session_changed", (p) => renderYoutubeSession(!!p.signed_in, p.source));
 
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.addEventListener("click", () => {
@@ -437,12 +437,18 @@ async function openChangelogModal() {
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
 }
 
-function renderYoutubeSession(signedIn) {
+function renderYoutubeSession(signedIn, source) {
   state.youtubeSignedIn = signedIn;
   $("btn-youtube-login").textContent = signedIn ? "Se déconnecter" : "Se connecter";
-  $("youtube-session-hint").textContent = signedIn
-    ? "Connecté. Les vidéos réservées aux comptes connectés se téléchargent normalement."
-    : "Nécessaire uniquement pour les vidéos que YouTube réserve aux comptes connectés.";
+  if (!signedIn) {
+    $("youtube-session-hint").textContent =
+      "Uniquement pour les vidéos réservées aux comptes connectés. Au choix : ici, "
+      + "ou via l'extension navigateur qui transmet la session automatiquement.";
+    return;
+  }
+  const via = source === "extension" ? "via l'extension navigateur" : "via l'application";
+  $("youtube-session-hint").textContent =
+    `Connecté ${via}. Les vidéos réservées aux comptes connectés se téléchargent normalement.`;
 }
 
 function initSmoothWheelScroll(el) {
@@ -1893,7 +1899,7 @@ async function init() {
   sfxToggle.classList.toggle("on", state.sfxEnabled);
   sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
   Api.getYoutubeSessionStatus()
-    .then((s) => renderYoutubeSession(!!s.signed_in))
+    .then((s) => renderYoutubeSession(!!s.signed_in, s.source))
     .catch(() => {});
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.classList.toggle("on", state.copyThumbnail);

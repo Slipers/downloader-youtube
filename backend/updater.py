@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.37"
+APP_VERSION = "1.38"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,14 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.38",
+        "date": "17 septembre 2026",
+        "bullets": [
+            "Les deux façons de fournir votre session YouTube coexistent désormais clairement : la connexion intégrée à l'application, et l'extension navigateur. L'une ou l'autre suffit, aucune n'est obligatoire.",
+            "Les paramètres indiquent maintenant par quel moyen vous êtes connecté, et se mettent à jour tout seuls quand l'extension transmet la session.",
+        ],
+    },
     {
         "version": "1.37",
         "date": "17 septembre 2026",

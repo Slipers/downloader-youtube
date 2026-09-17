@@ -138,20 +138,20 @@ class Api:
 
     def _friendly_error(self, exc: Exception) -> str:
         message = str(exc)
-        # These all mean the same thing to the user: no usable session. Point
-        # at the in-app sign-in rather than the extension -- it works on its
-        # own, and telling someone to install a companion extension to
-        # download a video is a lot to ask for something the app can do
-        # itself.
+        # These all mean the same thing to the user: no usable session. Lead
+        # with the in-app sign-in since it needs nothing installed, but name
+        # the extension too -- both fill the same store and either one is
+        # enough on its own.
         if (
             downloader.is_decrypt_blocked_error(message)
             or downloader.is_bot_check_error(message)
             or downloader.is_cookie_extraction_error(message)
         ):
             return (
-                "Cette vidéo nécessite d'être connecté à YouTube. Ouvrez les Paramètres et "
-                "cliquez sur « Se connecter à YouTube » : la connexion se fait directement "
-                "dans l'application, une seule fois."
+                "Cette vidéo nécessite d'être connecté à YouTube. Deux possibilités, au "
+                "choix : cliquez sur « Se connecter à YouTube » dans les Paramètres (la "
+                "connexion se fait dans l'application, une seule fois), ou installez "
+                "l'extension navigateur, qui transmet votre session automatiquement."
             )
         return f"Impossible de récupérer la vidéo : {message}"
 
@@ -283,6 +283,11 @@ class Api:
     def launch_browser(self, browser_id: str):
         return browsers.launch_browser(browser_id)
 
+    def on_youtube_session_synced(self):
+        """Called from the link-server thread when the extension pushes cookies,
+        so the settings screen reflects it without needing a reopen."""
+        self._push("youtube_session_changed", {"signed_in": True, "source": "extension"})
+
     def on_extension_linked(self):
         """Called from the link-server thread when the extension pairs."""
         window_utils.focus_window(WINDOW_TITLE)
@@ -295,7 +300,10 @@ class Api:
 
     # ---- YouTube sign-in (extension-free) ----------------------------------
     def get_youtube_session_status(self):
-        return {"signed_in": bool(cookie_store.path_if_present())}
+        return {
+            "signed_in": bool(cookie_store.path_if_present()),
+            "source": config.load_settings().get("youtube_session_source"),
+        }
 
     def open_youtube_login(self):
         """Opens YouTube in a window of this app so the user can sign in, then
@@ -342,11 +350,11 @@ class Api:
                     continue
                 last_count = len(found)
                 try:
-                    stored = cookie_store.save(found)
+                    stored = cookie_store.save(found, source="app")
                 except OSError:
                     continue
                 if stored:
-                    self._push("youtube_session_changed", {"signed_in": True})
+                    self._push("youtube_session_changed", {"signed_in": True, "source": "app"})
 
         threading.Thread(target=harvest_loop, daemon=True).start()
         return {"ok": True}

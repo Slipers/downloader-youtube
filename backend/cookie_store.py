@@ -1,4 +1,4 @@
-"""Stores the YouTube cookies the browser extension pushes over the link server.
+"""Stores the YouTube session cookies, in the Netscape format yt-dlp reads.
 
 Why this exists: YouTube increasingly asks apps to "sign in to confirm you're
 not a robot" for some videos. yt-dlp can normally read cookies straight out of
@@ -6,10 +6,17 @@ an installed browser, but Chrome/Edge 127+ encrypt their cookie database with
 App-Bound Encryption, which deliberately stops other processes from decrypting
 it -- closing the browser doesn't help, and there's no supported way around it.
 
-The extension sidesteps the problem entirely instead of fighting it: it runs
-*inside* the browser, so `chrome.cookies` hands it the cookies already
-decrypted, through the browser's own official API. It posts them here and this
-module writes them in the Netscape format yt-dlp reads.
+Two supported ways to fill this store, both equally valid; whichever ran last
+wins, and neither requires the other:
+
+1. The in-app YouTube sign-in (backend/api.py): this app is a browser, so it
+   can simply hold its own session.
+2. The browser extension (backend/link_server.py): it runs *inside* the
+   browser, so `chrome.cookies` hands it the cookies already decrypted,
+   through the browser's own official API.
+
+Both sidestep App-Bound Encryption rather than fighting it -- neither ever
+tries to decrypt another browser's cookie database.
 """
 import os
 import tempfile
@@ -89,8 +96,14 @@ def from_simple_cookies(cookies) -> list:
     return out
 
 
-def save(cookies: list) -> int:
-    """Writes the cookies atomically. Returns how many were actually stored."""
+def save(cookies: list, source: str | None = None) -> int:
+    """Writes the cookies atomically. Returns how many were actually stored.
+
+    `source` records which of the two supported paths supplied them -- the
+    in-app YouTube sign-in or the browser extension -- purely so the settings
+    screen can tell the user which one is currently in use. Both are equally
+    supported; neither replaces the other.
+    """
     text = _format_netscape(cookies or [])
     # The header lines are always present, so count real entries instead.
     count = sum(1 for line in text.splitlines() if line and not line.startswith("#"))
@@ -114,6 +127,8 @@ def save(cookies: list) -> int:
         os.chmod(config.COOKIES_FILE, 0o600)
     except OSError:
         pass
+    if source:
+        config.save_settings({"youtube_session_source": source})
     return count
 
 
@@ -125,4 +140,5 @@ def clear() -> bool:
     if not config.COOKIES_FILE.exists():
         return False
     config.COOKIES_FILE.unlink(missing_ok=True)
+    config.save_settings({"youtube_session_source": None})
     return True
