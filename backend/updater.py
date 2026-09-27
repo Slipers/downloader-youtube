@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.38"
+APP_VERSION = "1.39"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,15 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.39",
+        "date": "27 septembre 2026",
+        "bullets": [
+            "Correction : une vidéo pouvait parfois se télécharger dans une qualité ou un débit bien plus bas que celui choisi, alors qu'un second essai fonctionnait. L'application vérifie maintenant la qualité réellement obtenue avant de télécharger, et réessaie d'elle-même si YouTube a renvoyé une liste incomplète.",
+            "Correction : en MP4, choisir la 2K ou la 4K donnait en réalité du 1080p. La résolution choisie est désormais respectée.",
+            "Si YouTube ne fournit vraiment pas la qualité demandée, l'écran de fin l'indique clairement au lieu de le passer sous silence.",
+        ],
+    },
     {
         "version": "1.38",
         "date": "17 septembre 2026",

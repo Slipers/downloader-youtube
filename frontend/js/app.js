@@ -846,6 +846,17 @@ function proceedToOptions() {
   }, 360);
 }
 
+// What the settings screen promised for the chosen tier: the tallest height
+// the video actually offers at or under it. The backend checks the format it
+// is about to download against this, since its own (second) extraction can
+// come back with a stripped-down ladder.
+function expectedHeightForChoice() {
+  const available = state.videoInfo?.available_heights || [];
+  const cap = state.qualityTiers?.[state.quality]?.height ?? Infinity;
+  const eligible = available.filter((h) => h <= cap);
+  return eligible.length ? Math.max(...eligible) : null;
+}
+
 const URL_FETCH_RING_CIRCUMFERENCE = 144.5; // 2 * PI * r(23), matches the SVG in index.html
 
 async function skipConfirmAndProceed(url, nextBtn) {
@@ -1506,7 +1517,10 @@ function runDownload() {
     cleanup();
     setStep("download", "done");
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
-    const done = `Terminé en ${elapsed.toFixed(1)} s`;
+    let done = `Terminé en ${elapsed.toFixed(1)} s`;
+    if (payload.quality_downgraded && payload.delivered_height) {
+      done += ` — YouTube n'a fourni que du ${payload.delivered_height}p pour cette vidéo`;
+    }
     showResult(
       "success",
       "Téléchargement terminé",
@@ -1556,6 +1570,7 @@ function runDownload() {
     overwrite: state.downloadOverwrite || false,
     custom_filename: state.downloadCustomFilename || null,
     thumbnail_url: state.videoInfo?.thumbnail || null,
+    expected_height: expectedHeightForChoice(),
   });
 }
 

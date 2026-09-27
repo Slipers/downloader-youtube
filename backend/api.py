@@ -251,6 +251,14 @@ class Api:
             result = downloader.download(
                 url, opts, on_progress, cancel_event=cancel_event,
                 cookies_browser_hint=options.get("cookies_browser_hint"),
+                # An explicit fps cap can legitimately exclude the tallest
+                # formats, so the height guarantee only applies on "auto".
+                expected_height=(
+                    options.get("expected_height")
+                    if options.get("export_type") != "audio_only"
+                    and options.get("fps") in (None, "auto")
+                    else None
+                ),
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
             settings = config.load_settings()

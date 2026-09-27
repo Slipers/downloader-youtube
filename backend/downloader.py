@@ -41,6 +41,9 @@ ROLLING_WINDOW_SECONDS = 5
 # band that measured well.
 HTTP_CHUNK_SIZE = 10 * 1024 * 1024
 
+# Fresh extractions tried before accepting a lower quality than requested.
+DEGRADED_SELECTION_ATTEMPTS = 3
+
 VIDEO_CONTAINERS = ["mp4", "mkv", "webm"]
 AUDIO_FORMATS = ["mp3", "m4a", "wav", "opus"]
 
@@ -116,6 +119,21 @@ def has_full_quality_ladder(info: dict) -> bool:
     return any(str(f.get("format_id")) not in _MUXED_FALLBACK_ITAGS for f in video_formats)
 
 
+class DegradedSelection(Exception):
+    """The format the download was about to fetch falls short of what the user
+    picked, because this particular extraction came back with a stripped-down
+    ladder. Raised *before* any bytes are downloaded, so the attempt can be
+    retried (fresh extraction, or with the session) instead of quietly saving
+    a lower quality than the one chosen on the settings screen."""
+
+
+def _selected_video_height(info: dict) -> int | None:
+    for f in info.get("requested_formats") or [info]:
+        if f.get("vcodec") not in (None, "none") and f.get("height"):
+            return f["height"]
+    return None
+
+
 def _cookies_opts(browser: str | None) -> dict:
     return {"cookiesfrombrowser": (browser,)} if browser else {}
 
@@ -155,9 +173,13 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
         opts = make_opts(extra)
         try:
             result = run(opts)
+        except DownloadCancelled:
+            # The user pressed stop: never carry on to the next cookie source.
+            raise
         except Exception as exc:
             last_exc = exc
-            if kind == "none" and not needs_signed_in_retry(str(exc)):
+            retryable = isinstance(exc, DegradedSelection) or needs_signed_in_retry(str(exc))
+            if kind == "none" and not retryable:
                 raise
             continue
 
@@ -345,16 +367,15 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     reencode = _needs_reencode(bitrate, tier["recommended_kbps"])
 
     # MP4 is the format people pick specifically to open elsewhere (video
-    # editors, older devices) -- but YouTube only offers H.264 up to 1080p;
-    # above that (and often at 1080p too) "best" silently means VP9 or AV1
-    # muxed into an .mp4 container, which plays fine in a browser or VLC but
-    # many NLEs (Premiere Pro included) reject outright as "unsupported
-    # compression" since the container name promises H.264 they can decode.
-    # Preferring avc1/mp4a first, with the unfiltered format as a fallback
-    # for cases where YouTube doesn't offer H.264 at all, keeps the common
-    # case genuinely compatible without breaking playback when it can't be.
-    codec_filter = "[vcodec^=avc1]" if container == "mp4" else ""
-    audio_codec_filter = "[acodec^=mp4a]" if container == "mp4" else ""
+    # editors, older devices), and many NLEs (Premiere Pro included) reject
+    # VP9/AV1 muxed into an .mp4 as "unsupported compression". So H.264/AAC is
+    # preferred -- but only as a *tie-breaker* between formats of the same
+    # resolution and frame rate. It used to be a hard first choice in the
+    # format string, and since YouTube offers no H.264 above 1080p, asking for
+    # 2K or 4K in MP4 silently delivered 1080p. The quality the user picked
+    # wins; codec compatibility only decides between equals.
+    if container == "mp4":
+        opts["format_sort"] = ["res", "fps", "vcodec:h264", "acodec:aac"]
 
     # A trailing unfiltered "best" catches sites like TikTok, where a portrait
     # video's *width* is its short side -- yt-dlp still reports "height" as
@@ -362,15 +383,14 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     # format and fail outright instead of just settling for what exists.
     if export_type == "video_only":
         opts["format"] = (
-            f"bestvideo{codec_filter}{height_filter}{fps_filter}/"
             f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}/best"
         )
         if reencode or output_format:
             opts["postprocessors"] = [{"key": "FFmpegVideoConvertor", "preferedformat": container}]
     else:  # video_audio
         opts["format"] = (
-            f"bestvideo{codec_filter}{height_filter}{fps_filter}+bestaudio{audio_codec_filter}/"
-            f"bestvideo{height_filter}{fps_filter}+bestaudio/best{height_filter}{fps_filter}/best"
+            f"bestvideo{height_filter}{fps_filter}+bestaudio/"
+            f"best{height_filter}{fps_filter}/best"
         )
         opts["merge_output_format"] = container
 
@@ -412,7 +432,14 @@ class _RollingSpeed:
 def download(
     url: str, ydl_opts: dict, on_progress, cancel_event=None,
     cookies_browser_hint: str | None = None, cookies_file: str | None = None,
+    expected_height: int | None = None,
 ) -> dict:
+    """`expected_height` is the height the settings screen promised for the
+    user's choice (the best available one at or under the picked tier). The
+    download re-extracts the video, and YouTube can hand that second
+    extraction a stripped ladder even when the first one was complete -- the
+    `height<=X` filter then quietly settles for less. The selection is checked
+    before anything downloads and retried if it falls short."""
     roller = _RollingSpeed()
     last_tmpfile = {"path": None}
 
@@ -446,18 +473,54 @@ def download(
         opts["progress_hooks"] = [hook]
         return opts
 
-    def run(opts):
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            return ydl, info, opts
+    def meets_expectation(info) -> bool:
+        # TikTok/Instagram report a portrait video's long side as "height",
+        # so the tier math doesn't transfer -- only YouTube is checked.
+        if not expected_height or info.get("extractor_key") != "Youtube":
+            return True
+        height = _selected_video_height(info)
+        return height is None or height >= expected_height
 
+    def make_run(strict: bool):
+        def run(opts):
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                # Resolve first, check, *then* download exactly what was
+                # resolved -- inside the retry loop, so a 403 on the media
+                # fetch still falls back to the signed-in session as before.
+                info = ydl.extract_info(url, download=False)
+                if strict and not meets_expectation(info):
+                    raise DegradedSelection(
+                        f"got {_selected_video_height(info)}p, expected {expected_height}p"
+                    )
+                info = ydl.process_ie_result(info, download=True)
+                return ydl, info, opts
+        return run
+
+    result = None
     try:
-        (ydl, info, used_opts), _browser = _with_auto_cookies(
-            make_opts, run, hint=cookies_browser_hint, cookies_file=cookies_file,
-        )
+        # A retry usually gets the full ladder back, so a few fresh attempts
+        # before settling. Only if every one comes back short does the final
+        # pass accept what exists -- and the result says so rather than
+        # passing it off as the quality that was asked for.
+        for _ in range(DEGRADED_SELECTION_ATTEMPTS):
+            try:
+                result, _browser = _with_auto_cookies(
+                    make_opts, make_run(strict=True),
+                    hint=cookies_browser_hint, cookies_file=cookies_file,
+                )
+                break
+            except DegradedSelection:
+                if cancel_event is not None and cancel_event.is_set():
+                    raise DownloadCancelled("Téléchargement annulé par l'utilisateur.")
+        if result is None:
+            result, _browser = _with_auto_cookies(
+                make_opts, make_run(strict=False),
+                hint=cookies_browser_hint, cookies_file=cookies_file,
+            )
     except DownloadCancelled:
         _cleanup_partial_files(last_tmpfile["path"])
         raise
+    ydl, info, used_opts = result
 
     final_path = None
     try:
@@ -471,7 +534,16 @@ def download(
     except Exception:
         final_path = None
 
-    return {"title": info.get("title"), "filepath": final_path}
+    delivered = _selected_video_height(info)
+    return {
+        "title": info.get("title"),
+        "filepath": final_path,
+        "delivered_height": delivered,
+        "quality_downgraded": bool(
+            expected_height and delivered and delivered < expected_height
+            and info.get("extractor_key") == "Youtube"
+        ),
+    }
 
 
 def _cleanup_partial_files(tmpfilename):
