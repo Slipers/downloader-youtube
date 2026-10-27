@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 import webview
-from yt_dlp.utils import DownloadCancelled
+from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
 from . import browsers, clipboard, config, cookie_store, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
 
@@ -18,7 +18,15 @@ YOUTUBE_URL_RE = re.compile(
 )
 TIKTOK_URL_RE = re.compile(r"^https?://(www\.|vm\.|vt\.|m\.)?tiktok\.com/")
 INSTAGRAM_URL_RE = re.compile(r"^https?://(www\.)?instagram\.com/(reel|p|tv)/[\w-]+")
-SUPPORTED_URL_PATTERNS = (YOUTUBE_URL_RE, TIKTOK_URL_RE, INSTAGRAM_URL_RE)
+# VODs and clips only: a bare channel URL is a live stream that never ends.
+TWITCH_URL_RE = re.compile(
+    r"^https?://(?:(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|[\w-]+/clip/[\w-]+)|clips\.twitch\.tv/[\w-]+)"
+)
+DAILYMOTION_URL_RE = re.compile(r"^https?://(?:(?:www\.)?dailymotion\.com/video/\w+|dai\.ly/\w+)")
+TWITTER_URL_RE = re.compile(r"^https?://(?:www\.|mobile\.)?(?:twitter|x)\.com/\w+/status/\d+")
+SUPPORTED_URL_PATTERNS = (
+    YOUTUBE_URL_RE, TIKTOK_URL_RE, INSTAGRAM_URL_RE, TWITCH_URL_RE, DAILYMOTION_URL_RE, TWITTER_URL_RE,
+)
 
 WINDOW_TITLE = "Downloader Youtube"
 
@@ -60,6 +68,7 @@ class Api:
             "show_preview", "last_quality", "last_fps", "last_export_type",
             "last_output_format", "confetti_seconds", "last_seen_version",
             "sfx_enabled", "always_confirm_video", "copy_thumbnail",
+            "embed_metadata", "on_existing_file", "files_setup",
         }
         if key in allowed:
             config.save_settings({key: value})
@@ -72,14 +81,15 @@ class Api:
         return {"ok": ok}
 
     # ---- folder picker (native) -------------------------------------------
-    def pick_folder(self):
+    def pick_folder(self, remember=True):
         if not self.window:
             return None
         result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
         if not result:
             return None
         folder = result[0] if isinstance(result, (list, tuple)) else result
-        config.save_settings({"last_download_dir": folder})
+        if remember:
+            config.save_settings({"last_download_dir": folder})
         return folder
 
     def open_folder(self, path: str):
@@ -96,7 +106,7 @@ class Api:
 
     def fetch_video_info(self, url: str):
         if not self.is_valid_youtube_url(url):
-            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL YouTube, TikTok ou Instagram valide."}
+            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL de vidéo prise en charge."}
 
         # There's no real byte-level progress for a metadata fetch (it's one
         # blocking call, not a download), so this reports elapsed time against
@@ -217,9 +227,30 @@ class Api:
         return {"started": True}
 
     # ---- download -------------------------------------------------------
+    @staticmethod
+    def _files_setup(settings=None) -> dict | None:
+        setup = (settings or config.load_settings()).get("files_setup") or {}
+        return setup if setup.get("enabled") and setup.get("root_dir") else None
+
     def check_output_exists(self, title: str, options: dict):
-        path = downloader.predict_output_path(title, options)
-        return {"exists": path.exists(), "filename": path.name}
+        """Whether a download under this title would collide with something
+        already on disk -- the file itself, or with the files setup on, the
+        per-video folder -- plus the first free "Title (n)" to fall back on."""
+        setup = self._files_setup()
+
+        def target(name):
+            if setup:
+                return Path(setup["root_dir"]) / name
+            return downloader.predict_output_path(name, options)
+
+        safe = sanitize_filename(title, restricted=False)
+        path = target(safe)
+        if not path.exists():
+            return {"exists": False}
+        n = 1
+        while target(f"{safe} ({n})").exists():
+            n += 1
+        return {"exists": True, "filename": path.name, "numbered_name": f"{safe} ({n})"}
 
     def start_download(self, url: str, options: dict):
         self._cancel_event = threading.Event()
@@ -241,6 +272,19 @@ class Api:
 
     def _run_download(self, url, options, cancel_event):
         started = time.monotonic()
+        settings = config.load_settings()
+        chosen_dir = options.get("dest_dir")
+        options = dict(options, embed_metadata=settings.get("embed_metadata", True))
+        setup = self._files_setup(settings)
+        base_name = options.get("custom_filename") or sanitize_filename(
+            options.get("title") or "video", restricted=False
+        )
+        if setup:
+            options.update(
+                dest_dir=str(Path(setup["root_dir"]) / base_name),
+                write_thumbnail=bool(setup.get("thumbnail")),
+                skip_video=not setup.get("video", True),
+            )
         try:
             ffmpeg_location = ffmpeg_manager.find_ffmpeg()
             opts = downloader.build_ydl_opts(options, ffmpeg_location)
@@ -261,9 +305,16 @@ class Api:
                 ),
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
-            settings = config.load_settings()
+            result["folder"] = options["dest_dir"]
+            if setup and setup.get("text"):
+                text_path = Path(options["dest_dir"]) / f"{base_name}.txt"
+                parts = (result.get("title") or "", result.get("description") or "", result.get("webpage_url") or url)
+                text_path.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+            if setup and options.get("skip_video"):
+                result["filepath"] = options["dest_dir"]
             total = settings.get("total_downloads", 0) + 1
-            config.save_settings({"last_download_dir": options.get("dest_dir"), "total_downloads": total})
+            # The per-video setup folder is not the user's chosen download folder.
+            config.save_settings({"last_download_dir": chosen_dir, "total_downloads": total})
             result["total_downloads"] = total
             # Opt-in convenience: never allowed to affect the download itself,
             # hence the always-false-on-error contract in clipboard.py.

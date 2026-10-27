@@ -42,9 +42,9 @@ const Api = {
     await apiReady;
     return window.pywebview.api.open_folder(path);
   },
-  async pickFolder() {
+  async pickFolder(remember = true) {
     await apiReady;
-    return window.pywebview.api.pick_folder();
+    return window.pywebview.api.pick_folder(remember);
   },
   async fetchVideoInfo(url) {
     await apiReady;

@@ -5,16 +5,30 @@ const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu
 const TIKTOK_URL_RE = /^https?:\/\/(www\.|vm\.|vt\.|m\.)?tiktok\.com\//i;
 const INSTAGRAM_URL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[\w-]+/i;
 
-const PLATFORM_URL_RE = { youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE, instagram: INSTAGRAM_URL_RE };
+// Twitch: VODs and clips only -- a bare channel URL is an endless live stream.
+const TWITCH_URL_RE = /^https?:\/\/(?:(?:www\.|m\.)?twitch\.tv\/(?:videos\/\d+|[\w-]+\/clip\/[\w-]+)|clips\.twitch\.tv\/[\w-]+)/i;
+const DAILYMOTION_URL_RE = /^https?:\/\/(?:(?:www\.)?dailymotion\.com\/video\/\w+|dai\.ly\/\w+)/i;
+const TWITTER_URL_RE = /^https?:\/\/(?:www\.|mobile\.)?(?:twitter|x)\.com\/\w+\/status\/\d+/i;
+
+const PLATFORM_URL_RE = {
+  youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE, instagram: INSTAGRAM_URL_RE,
+  twitch: TWITCH_URL_RE, dailymotion: DAILYMOTION_URL_RE, twitter: TWITTER_URL_RE,
+};
 const PLATFORM_PLACEHOLDER = {
   youtube: "https://www.youtube.com/watch?v=...",
   tiktok: "https://www.tiktok.com/@utilisateur/video/...",
   instagram: "https://www.instagram.com/reel/...",
+  twitch: "https://www.twitch.tv/videos/...",
+  dailymotion: "https://www.dailymotion.com/video/...",
+  twitter: "https://x.com/utilisateur/status/...",
 };
 const PLATFORM_SUBTITLE = {
   youtube: "Copiez l'URL YouTube de la vidéo que vous souhaitez télécharger.",
   tiktok: "Copiez l'URL TikTok de la vidéo que vous souhaitez télécharger.",
   instagram: "Copiez l'URL Instagram de la vidéo (reel ou post) que vous souhaitez télécharger.",
+  twitch: "Copiez l'URL d'une rediffusion ou d'un clip Twitch.",
+  dailymotion: "Copiez l'URL Dailymotion de la vidéo que vous souhaitez télécharger.",
+  twitter: "Copiez l'URL du post X (Twitter) qui contient la vidéo.",
 };
 
 const state = {
@@ -204,6 +218,25 @@ function initSettingsModal() {
   });
   Api.on("youtube_session_changed", (p) => renderYoutubeSession(!!p.signed_in, p.source));
 
+  $("btn-install-extension").addEventListener("click", () => {
+    const browser = (state.extensionBrowsers || []).find((b) => b.id === $("ext-browser-select").value);
+    if (browser) onInstallBrowser(browser, $("btn-install-extension"));
+  });
+
+  const metadataToggle = $("toggle-embed-metadata");
+  metadataToggle.addEventListener("click", () => {
+    state.settings.embed_metadata = !(state.settings.embed_metadata !== false);
+    setSwitch(metadataToggle, state.settings.embed_metadata);
+    Api.savePreference("embed_metadata", state.settings.embed_metadata);
+  });
+
+  $("existing-file-select").addEventListener("change", (e) => {
+    state.settings.on_existing_file = e.target.value;
+    Api.savePreference("on_existing_file", e.target.value);
+  });
+
+  initFilesSetup();
+
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.addEventListener("click", () => {
     state.copyThumbnail = !state.copyThumbnail;
@@ -282,6 +315,67 @@ async function refreshFfmpegStatus() {
   fitModalToViewport("modal-settings");
 }
 
+/* ---------- files setup ("Organisation des fichiers") ---------- */
+function filesSetup() {
+  return state.settings.files_setup || {};
+}
+
+function filesSetupActive() {
+  const setup = filesSetup();
+  return !!(setup.enabled && setup.root_dir);
+}
+
+function renderFilesSetupHint() {
+  const setup = filesSetup();
+  $("files-setup-hint").textContent = filesSetupActive()
+    ? `Activé — ${setup.root_dir}`
+    : "Un sous-dossier par vidéo, avec miniature et texte.";
+}
+
+function initFilesSetup() {
+  const toggle = $("toggle-files-setup");
+  toggle.addEventListener("click", () => setSwitch(toggle, toggle.getAttribute("aria-checked") !== "true"));
+
+  $("btn-files-setup").addEventListener("click", () => {
+    const setup = filesSetup();
+    setSwitch(toggle, !!setup.enabled);
+    $("files-setup-dir").value = setup.root_dir || "";
+    $("setup-video").checked = setup.video !== false;
+    $("setup-thumbnail").checked = setup.thumbnail !== false;
+    $("setup-text").checked = setup.text !== false;
+    $("files-setup-error").hidden = true;
+    openModal("modal-files-setup");
+  });
+
+  $("btn-files-setup-browse").addEventListener("click", async () => {
+    const folder = await Api.pickFolder(false);
+    if (folder) $("files-setup-dir").value = folder;
+  });
+
+  $("files-setup-cancel").addEventListener("click", () => closeModal("modal-files-setup"));
+
+  $("files-setup-save").addEventListener("click", () => {
+    const setup = {
+      enabled: toggle.getAttribute("aria-checked") === "true",
+      root_dir: $("files-setup-dir").value || null,
+      video: $("setup-video").checked,
+      thumbnail: $("setup-thumbnail").checked,
+      text: $("setup-text").checked,
+    };
+    const error = !setup.enabled ? ""
+      : !setup.root_dir ? "Choisissez un dossier principal."
+      : !(setup.video || setup.thumbnail || setup.text) ? "Cochez au moins un élément à enregistrer."
+      : "";
+    $("files-setup-error").textContent = error;
+    $("files-setup-error").hidden = !error;
+    if (error) return;
+    state.settings.files_setup = setup;
+    Api.savePreference("files_setup", setup);
+    renderFilesSetupHint();
+    closeModal("modal-files-setup");
+  });
+}
+
 /* ---------- toast ---------- */
 let toastTimer = null;
 function showToast(text, durationMs = 3200) {
@@ -295,54 +389,29 @@ function showToast(text, durationMs = 3200) {
 /* ---------- extension settings ---------- */
 async function refreshExtensionSettings() {
   const statusText = $("extension-status-text");
-  const list = $("browser-list");
   statusText.textContent = "Vérification…";
 
   const [status, browserList, extUpdate] = await Promise.all([
     Api.getExtensionStatus(), Api.listBrowsers(), Api.checkExtensionUpdate(),
   ]);
   statusText.textContent = status.paired
-    ? "Extension liée ✓"
-    : "Non liée — installez l'extension puis cliquez « Lier » dans son menu.";
+    ? "Liée ✓ — bouton Télécharger sur YouTube."
+    : "Facultatif — ajoute un bouton Télécharger sur YouTube.";
 
-  const updateRow = $("extension-update-row");
-  const updateBtn = $("btn-update-extension");
-  if (extUpdate.available && status.paired) {
+  // Only relevant once installed: a fresh install already gets the latest files.
+  const showUpdate = extUpdate.available && status.paired;
+  $("extension-update-row").hidden = !showUpdate;
+  if (showUpdate) {
     $("extension-update-text").textContent = `Nouvelle version de l'extension disponible (v${extUpdate.version}).`;
-    updateBtn.hidden = false;
-    updateRow.hidden = false;
-  } else if (extUpdate.available && !status.paired) {
-    $("extension-update-text").textContent = "Veuillez télécharger l'extension avant de mettre à jour.";
-    updateBtn.hidden = true;
-    updateRow.hidden = false;
-  } else {
-    updateRow.hidden = true;
   }
 
-  list.innerHTML = "";
-  if (!browserList.length) {
-    const empty = document.createElement("p");
-    empty.className = "hint-text";
-    empty.textContent = "Aucun navigateur Chromium détecté sur cet ordinateur.";
-    list.appendChild(empty);
-    fitModalToViewport("modal-settings");
-    return;
-  }
-
-  browserList.forEach((browser) => {
-    const row = document.createElement("div");
-    row.className = "browser-row";
-    row.innerHTML = `
-      <div class="browser-row-icon">${browser.name.charAt(0)}</div>
-      <div class="browser-row-name">${browser.name}</div>
-    `;
-    const btn = document.createElement("button");
-    btn.className = "btn-secondary";
-    btn.textContent = "Installer";
-    btn.addEventListener("click", () => onInstallBrowser(browser, btn));
-    row.appendChild(btn);
-    list.appendChild(row);
-  });
+  const select = $("ext-browser-select");
+  const installBtn = $("btn-install-extension");
+  state.extensionBrowsers = browserList;
+  select.innerHTML = browserList.length
+    ? browserList.map((b) => `<option value="${b.id}">${b.name}</option>`).join("")
+    : "<option>Aucun navigateur compatible</option>";
+  select.disabled = installBtn.disabled = !browserList.length;
   fitModalToViewport("modal-settings");
 }
 
@@ -706,17 +775,15 @@ function setPlatform(platform) {
   // `.hidden` as a JS property is unreliable on <svg> elements in some engines
   // (only the HTML-specific mixin reliably supports it) -- toggleAttribute
   // works on any Element and correctly reflects to the [hidden] CSS selector.
-  $("platform-icon-youtube").toggleAttribute("hidden", platform !== "youtube");
-  $("platform-icon-tiktok").toggleAttribute("hidden", platform !== "tiktok");
-  $("platform-icon-instagram").toggleAttribute("hidden", platform !== "instagram");
+  Object.keys(PLATFORM_URL_RE).forEach((p) => {
+    $(`platform-icon-${p}`).toggleAttribute("hidden", platform !== p);
+    $("app").classList.toggle(`platform-${p}`, platform === p);
+  });
   $("url-input").placeholder = PLATFORM_PLACEHOLDER[platform];
   $("url-screen-subtitle").textContent = PLATFORM_SUBTITLE[platform];
   document.querySelectorAll(".platform-option").forEach((opt) => {
     opt.classList.toggle("active", opt.dataset.platform === platform);
   });
-  $("app").classList.toggle("platform-youtube", platform === "youtube");
-  $("app").classList.toggle("platform-tiktok", platform === "tiktok");
-  $("app").classList.toggle("platform-instagram", platform === "instagram");
   $("url-input").dispatchEvent(new Event("input"));
 }
 
@@ -1172,9 +1239,10 @@ function populateOptionsScreen() {
   renderFpsGrid();
   setExportType(state.exportType);
 
-  if (!$("dest-input").value) {
-    $("dest-input").value = state.destDir;
-  }
+  const setupOn = filesSetupActive();
+  $("dest-input").value = setupOn ? filesSetup().root_dir : state.destDir;
+  $("btn-browse").disabled = setupOn;
+  $("dest-setup-hint").hidden = !setupOn;
 }
 
 function initOptionsScreen() {
@@ -1213,62 +1281,46 @@ function currentDownloadOptions() {
   };
 }
 
-function suggestRenameFrom(filename) {
-  const dotIndex = filename.lastIndexOf(".");
-  const base = dotIndex > 0 ? filename.slice(0, dotIndex) : filename;
-  return `${base} (1)`;
-}
+let pendingNumberedName = null;
 
-function openFileExistsModal(filename) {
-  $("file-exists-name").textContent = filename;
-  $("file-exists-step-ask").hidden = false;
-  $("file-exists-step-rename").hidden = true;
-  $("file-exists-rename-error").hidden = true;
+function openFileExistsModal(check) {
+  pendingNumberedName = check.numbered_name;
+  $("file-exists-name").textContent = check.filename;
+  $("file-exists-numbered").textContent = check.numbered_name;
+  setSwitch($("toggle-file-exists-remember"), false);
   openModal("modal-file-exists");
 }
 
+function setSwitch(el, on) {
+  el.classList.toggle("on", on);
+  el.setAttribute("aria-checked", String(on));
+}
+
+// "Ne plus me demander": the choice made in the pop-up becomes the default,
+// the same setting the "Fichier déjà existant" row in Paramètres controls.
+function rememberExistingFileChoice(choice) {
+  if ($("toggle-file-exists-remember").getAttribute("aria-checked") !== "true") return;
+  state.settings.on_existing_file = choice;
+  $("existing-file-select").value = choice;
+  Api.savePreference("on_existing_file", choice);
+}
+
 function initFileExistsModal() {
+  const remember = $("toggle-file-exists-remember");
+  remember.addEventListener("click", () => setSwitch(remember, remember.getAttribute("aria-checked") !== "true"));
+
   $("file-exists-cancel").addEventListener("click", () => closeModal("modal-file-exists"));
 
   $("file-exists-overwrite").addEventListener("click", () => {
+    rememberExistingFileChoice("overwrite");
     state.downloadOverwrite = true;
     closeModal("modal-file-exists");
     beginDownloadProcess();
   });
 
   $("file-exists-rename").addEventListener("click", () => {
-    $("file-exists-step-ask").hidden = true;
-    $("file-exists-step-rename").hidden = false;
-    $("file-exists-rename-error").hidden = true;
-    const input = $("file-exists-rename-input");
-    input.value = suggestRenameFrom($("file-exists-name").textContent);
-    input.focus();
-    input.select();
-  });
-
-  $("file-exists-rename-back").addEventListener("click", () => {
-    $("file-exists-step-rename").hidden = true;
-    $("file-exists-step-ask").hidden = false;
-  });
-
-  $("file-exists-rename-confirm").addEventListener("click", async () => {
-    const newName = $("file-exists-rename-input").value.trim();
-    if (!newName) return;
-    const btn = $("file-exists-rename-confirm");
-    btn.disabled = true;
-    let check;
-    try {
-      check = await Api.checkOutputExists(newName, currentDownloadOptions());
-    } catch (err) {
-      check = { exists: false };
-    }
-    btn.disabled = false;
-    if (check.exists) {
-      $("file-exists-rename-error").textContent = "Ce nom existe aussi déjà — essayez-en un autre.";
-      $("file-exists-rename-error").hidden = false;
-      return;
-    }
-    state.downloadCustomFilename = newName;
+    rememberExistingFileChoice("rename");
+    state.downloadCustomFilename = pendingNumberedName;
     closeModal("modal-file-exists");
     beginDownloadProcess();
   });
@@ -1287,8 +1339,15 @@ async function startDownloadFlow() {
       check = { exists: false };
     }
     if (check.exists) {
-      openFileExistsModal(check.filename);
-      return;
+      const choice = state.settings.on_existing_file || "ask";
+      if (choice === "overwrite") {
+        state.downloadOverwrite = true;
+      } else if (choice === "rename") {
+        state.downloadCustomFilename = check.numbered_name;
+      } else {
+        openFileExistsModal(check);
+        return;
+      }
     }
   }
   beginDownloadProcess();
@@ -1517,6 +1576,7 @@ function runDownload() {
     cleanup();
     setStep("download", "done");
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
+    state.resultFolder = payload.folder || null;
     let done = `Terminé en ${elapsed.toFixed(1)} s`;
     if (payload.quality_downgraded && payload.delivered_height) {
       done += ` — YouTube n'a fourni que du ${payload.delivered_height}p pour cette vidéo`;
@@ -1570,6 +1630,7 @@ function runDownload() {
     overwrite: state.downloadOverwrite || false,
     custom_filename: state.downloadCustomFilename || null,
     thumbnail_url: state.videoInfo?.thumbnail || null,
+    title: state.videoInfo?.title || null,
     expected_height: expectedHeightForChoice(),
   });
 }
@@ -1685,7 +1746,7 @@ function showResult(kind, title, text, filepath) {
     const openBtn = document.createElement("button");
     openBtn.className = "btn-secondary";
     openBtn.textContent = "Ouvrir le dossier";
-    openBtn.addEventListener("click", () => Api.openFolder(state.destDir));
+    openBtn.addEventListener("click", () => Api.openFolder(state.resultFolder || state.destDir));
     actions.appendChild(openBtn);
 
     if (filepath) {
@@ -1916,6 +1977,9 @@ async function init() {
   Api.getYoutubeSessionStatus()
     .then((s) => renderYoutubeSession(!!s.signed_in, s.source))
     .catch(() => {});
+  setSwitch($("toggle-embed-metadata"), settings.embed_metadata !== false);
+  $("existing-file-select").value = settings.on_existing_file || "ask";
+  renderFilesSetupHint();
   const copyThumbToggle = $("toggle-copy-thumbnail");
   copyThumbToggle.classList.toggle("on", state.copyThumbnail);
   copyThumbToggle.setAttribute("aria-checked", String(state.copyThumbnail));

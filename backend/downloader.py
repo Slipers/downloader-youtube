@@ -358,7 +358,7 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
         opts["postprocessors"] = [
             {"key": "FFmpegExtractAudio", "preferredcodec": codec, "preferredquality": str(bitrate)}
         ]
-        return opts
+        return _add_extras(opts, options)
 
     container = output_format if output_format in VIDEO_CONTAINERS else "mp4"
     tier = QUALITY_TIERS[quality]
@@ -396,8 +396,26 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
 
     if reencode:
         opts.setdefault("postprocessors", [{"key": "FFmpegVideoConvertor", "preferedformat": container}])
-        opts["postprocessor_args"] = {"default": ["-b:v", f"{bitrate}k"]}
+        # Scoped to the converter: under "default" it would also reach the
+        # metadata pass below, which only stream-copies.
+        opts["postprocessor_args"] = {"videoconvertor": ["-b:v", f"{bitrate}k"]}
 
+    return _add_extras(opts, options)
+
+
+def _add_extras(opts: dict, options: dict) -> dict:
+    """Optional outputs shared by every export type. Appended last so the
+    metadata pass runs after any conversion step has produced the final file."""
+    if options.get("write_thumbnail"):
+        opts["writethumbnail"] = True
+        opts.setdefault("postprocessors", []).append(
+            {"key": "FFmpegThumbnailsConvertor", "format": "jpg", "when": "before_dl"}
+        )
+    if options.get("embed_metadata"):
+        # Title, description, upload date, uploader and source URL.
+        opts.setdefault("postprocessors", []).append({"key": "FFmpegMetadata", "add_metadata": True})
+    if options.get("skip_video"):
+        opts["skip_download"] = True
     return opts
 
 
@@ -537,6 +555,8 @@ def download(
     delivered = _selected_video_height(info)
     return {
         "title": info.get("title"),
+        "description": info.get("description") or "",
+        "webpage_url": info.get("webpage_url") or url,
         "filepath": final_path,
         "delivered_height": delivered,
         "quality_downgraded": bool(

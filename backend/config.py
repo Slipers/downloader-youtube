@@ -40,6 +40,10 @@ DEFAULTS = {
     "last_rating_at": None,
     "copy_thumbnail": False,
     "youtube_session_source": None,
+    "embed_metadata": True,
+    "on_existing_file": "ask",  # "ask" | "rename" | "overwrite"
+    # Optional per-video folder layout ("Organisation des fichiers").
+    "files_setup": {"enabled": False, "root_dir": None, "video": True, "thumbnail": True, "text": True},
 }
 
 

@@ -72,6 +72,9 @@
           <svg id="platform-icon-youtube" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg>
           <svg id="platform-icon-tiktok" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
           <svg id="platform-icon-instagram" class="url-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
+          <svg id="platform-icon-twitch" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+          <svg id="platform-icon-dailymotion" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><circle cx="10.5" cy="14" r="5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 3v16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+          <svg id="platform-icon-twitter" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
           <svg class="platform-picker-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
@@ -91,6 +94,18 @@
           <button type="button" class="platform-option" data-platform="instagram">
             <svg class="platform-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
             <span>Instagram</span>
+          </button>
+          <button type="button" class="platform-option" data-platform="twitch">
+            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+            <span>Twitch</span>
+          </button>
+          <button type="button" class="platform-option" data-platform="dailymotion">
+            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="10.5" cy="14" r="5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 3v16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+            <span>Dailymotion</span>
+          </button>
+          <button type="button" class="platform-option" data-platform="twitter">
+            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            <span>X (Twitter)</span>
           </button>
         </div>
       </div>
@@ -195,6 +210,7 @@
                 Parcourir
               </button>
             </div>
+            <p id="dest-setup-hint" class="hint-text" hidden>Organisation des fichiers activée : un sous-dossier sera créé pour cette vidéo.</p>
             <p id="size-estimate" class="hint-text"></p>
           </div>
         </div>
@@ -289,24 +305,16 @@
   <!-- Modal : fichier déjà existant -->
   <div id="modal-file-exists" class="modal-overlay">
     <div class="modal">
-      <div id="file-exists-step-ask">
-        <h3>Ce fichier existe déjà</h3>
-        <p class="modal-meta">Un fichier nommé <strong id="file-exists-name"></strong> existe déjà dans le dossier de destination.</p>
-        <div class="modal-actions modal-actions-col">
-          <button id="file-exists-overwrite" class="btn-primary btn-full">Écraser le fichier existant</button>
-          <button id="file-exists-rename" class="btn-secondary btn-full">Renommer et télécharger</button>
-          <button id="file-exists-cancel" class="btn-secondary btn-full">Annuler</button>
-        </div>
+      <h3>Ce fichier existe déjà</h3>
+      <p class="modal-meta"><strong id="file-exists-name"></strong> existe déjà. En renommant, la vidéo sera enregistrée sous « <span id="file-exists-numbered"></span> ».</p>
+      <div class="modal-actions modal-actions-col">
+        <button id="file-exists-rename" class="btn-primary btn-full">Renommer avec un numéro</button>
+        <button id="file-exists-overwrite" class="btn-secondary btn-full">Écraser le fichier existant</button>
+        <button id="file-exists-cancel" class="btn-secondary btn-full">Annuler</button>
       </div>
-      <div id="file-exists-step-rename" hidden>
-        <h3>Choisir un autre nom</h3>
-        <p class="modal-meta">Le fichier sera enregistré sous ce nom dans le même dossier.</p>
-        <input type="text" id="file-exists-rename-input" class="rating-textarea file-exists-rename-input">
-        <p class="error-text" id="file-exists-rename-error" hidden></p>
-        <div class="modal-actions">
-          <button id="file-exists-rename-back" class="btn-secondary">Retour</button>
-          <button id="file-exists-rename-confirm" class="btn-primary">Télécharger</button>
-        </div>
+      <div class="confirm-always-row">
+        <span class="confirm-always-label">Ne plus me demander (modifiable dans les paramètres)</span>
+        <button id="toggle-file-exists-remember" class="switch switch-sm" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
       </div>
     </div>
   </div>
@@ -342,92 +350,150 @@
   <!-- Modal : paramètres -->
   <div id="modal-settings" class="modal-overlay">
     <div class="modal modal-settings-card">
-      <h3>Paramètres</h3>
-
-      <div class="stat-card">
-        <div class="stat-value" id="stat-total-downloads">0</div>
-        <div class="stat-label" id="stat-total-downloads-label">vidéos téléchargées</div>
-      </div>
-
-      <p class="settings-section-title">Téléchargement</p>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Aperçu pendant le téléchargement</p>
-          <p class="hint-text">Affiche la vidéo en cours de lecture (sans son) à l'endroit téléchargé.</p>
-        </div>
-        <button id="toggle-preview" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Effets sonores</p>
-          <p class="hint-text">Son de démarrage et son de fin de téléchargement.</p>
-        </div>
-        <button id="toggle-sfx" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Toujours confirmer la vidéo</p>
-          <p class="hint-text">Affiche un écran de confirmation avant de passer aux réglages de téléchargement.</p>
-        </div>
-        <button id="toggle-always-confirm-settings" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Connexion YouTube</p>
-          <p class="hint-text" id="youtube-session-hint">Nécessaire uniquement pour les vidéos que YouTube réserve aux comptes connectés.</p>
-        </div>
-        <button type="button" id="btn-youtube-login" class="btn-secondary">Se connecter</button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Copier la miniature</p>
-          <p class="hint-text">À la fin d'un téléchargement, place la miniature de la vidéo en haute résolution dans le presse-papiers.</p>
-        </div>
-        <button id="toggle-copy-thumbnail" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">Durée des confettis</p>
-          <p class="hint-text">Durée de l'animation de confettis à la fin du téléchargement.</p>
-        </div>
-        <div class="settings-number">
-          <input type="number" id="confetti-seconds-input" min="1" max="30" value="5">
-          <span>s</span>
+      <div class="settings-header">
+        <h3>Paramètres</h3>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total-downloads">0</div>
+          <div class="stat-label" id="stat-total-downloads-label">vidéos téléchargées</div>
         </div>
       </div>
 
-      <p class="settings-section-title">Système</p>
+      <div class="settings-grid">
+        <section class="settings-group">
+          <p class="settings-section-title">Téléchargement</p>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Aperçu en direct</p>
+              <p class="hint-text">La vidéo défile pendant le téléchargement.</p>
+            </div>
+            <button id="toggle-preview" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Effets sonores</p>
+              <p class="hint-text">Sons de démarrage et de fin.</p>
+            </div>
+            <button id="toggle-sfx" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Confirmer la vidéo</p>
+              <p class="hint-text">Écran de vérification avant les réglages.</p>
+            </div>
+            <button id="toggle-always-confirm-settings" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Copier la miniature</p>
+              <p class="hint-text">Dans le presse-papiers à la fin du téléchargement.</p>
+            </div>
+            <button id="toggle-copy-thumbnail" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Durée des confettis</p>
+              <p class="hint-text">Animation de fin de téléchargement.</p>
+            </div>
+            <div class="settings-number"><input type="number" id="confetti-seconds-input" min="1" max="30" value="5"><span>s</span></div>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <p class="settings-section-title">Fichiers</p>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Métadonnées</p>
+              <p class="hint-text">Ajoute le titre et la description de la vidéo dans le fichier.</p>
+            </div>
+            <button id="toggle-embed-metadata" class="switch" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Fichier déjà existant</p>
+              <p class="hint-text">Que faire si un fichier du même nom existe.</p>
+            </div>
+            <select id="existing-file-select" class="settings-select"><option value="ask">Demander</option><option value="rename">Renommer (1), (2)…</option><option value="overwrite">Écraser</option></select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Organisation des fichiers</p>
+              <p class="hint-text" id="files-setup-hint">Un sous-dossier par vidéo.</p>
+            </div>
+            <button type="button" id="btn-files-setup" class="btn-secondary btn-sm">Configurer</button>
+          </div>
+
+          <p class="settings-section-title">Connexion</p>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Compte YouTube</p>
+              <p class="hint-text" id="youtube-session-hint">Uniquement pour les vidéos réservées aux comptes connectés.</p>
+            </div>
+            <button type="button" id="btn-youtube-login" class="btn-secondary btn-sm">Se connecter</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Extension navigateur</p>
+              <p class="hint-text" id="extension-status-text">Vérification…</p>
+            </div>
+            <div class="settings-inline"><select id="ext-browser-select" class="settings-select"></select><button type="button" id="btn-install-extension" class="btn-secondary btn-sm">Installer</button></div>
+          </div>
+          <div id="extension-update-row" class="extension-update-row" hidden>
+            <span id="extension-update-text"></span>
+            <button id="btn-update-extension" class="btn-secondary">Mettre à jour</button>
+          </div>
+
+          <p class="settings-section-title">Système</p>
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">FFmpeg</p>
+              <p class="hint-text" id="ffmpeg-status-text">Vérification…</p>
+            </div>
+            <button id="btn-uninstall-ffmpeg" class="btn-secondary btn-sm" hidden>Désinstaller</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-footer">
+        <button id="btn-rate-app" class="rate-app-btn" type="button">
+          <span class="rate-app-btn-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
+            <span id="rate-app-badge" class="icon-btn-badge" hidden></span>
+          </span>
+          <span class="rate-app-btn-text">
+            <span class="rate-app-btn-title">Donner mon avis</span>
+            <span class="hint-text">Notez l'application.</span>
+          </span>
+        </button>
+        <button id="settings-close" class="btn-secondary">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : organisation des fichiers -->
+  <div id="modal-files-setup" class="modal-overlay">
+    <div class="modal">
+      <h3>Organisation des fichiers</h3>
+      <p class="modal-meta">Chaque vidéo téléchargée est rangée dans son propre sous-dossier, à l'intérieur du dossier principal choisi ici.</p>
       <div class="settings-row">
-        <div class="settings-row-text">
-          <p class="settings-row-title">FFmpeg</p>
-          <p class="hint-text" id="ffmpeg-status-text">Vérification…</p>
-        </div>
-        <button id="btn-uninstall-ffmpeg" class="btn-secondary" hidden>Désinstaller</button>
+        <div class="settings-row-text"><p class="settings-row-title">Activer</p></div>
+        <button id="toggle-files-setup" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
       </div>
-
-      <p class="settings-section-title">Extension navigateur</p>
-      <div class="settings-block" id="extension-block">
-        <p class="hint-text settings-block-hint" id="extension-status-text">Vérification…</p>
-        <div id="extension-update-row" class="extension-update-row" hidden>
-          <span id="extension-update-text"></span>
-          <button id="btn-update-extension" class="btn-secondary">Mettre à jour</button>
-        </div>
-        <div class="browser-list" id="browser-list"></div>
+      <label class="option-label">Dossier principal</label>
+      <div class="input-row">
+        <input type="text" id="files-setup-dir" readonly placeholder="Choisissez un dossier...">
+        <button type="button" id="btn-files-setup-browse" class="btn-secondary btn-browse">Parcourir</button>
       </div>
-
-      <button id="btn-rate-app" class="rate-app-btn" type="button">
-        <span class="rate-app-btn-icon">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          <span id="rate-app-badge" class="icon-btn-badge" hidden></span>
-        </span>
-        <span class="rate-app-btn-text">
-          <span class="rate-app-btn-title">Donner mon avis</span>
-          <span class="hint-text">Notez l'application et dites-nous ce que vous en pensez.</span>
-        </span>
-      </button>
-
+      <label class="option-label setup-items-label">À enregistrer pour chaque vidéo</label>
+      <div class="setup-checks">
+        <label class="setup-check"><input type="checkbox" id="setup-video"> Vidéo</label>
+        <label class="setup-check"><input type="checkbox" id="setup-thumbnail"> Miniature (.jpg)</label>
+        <label class="setup-check"><input type="checkbox" id="setup-text"> Fichier texte (titre + description)</label>
+      </div>
+      <p class="hint-text">Exemple : <em>Dossier principal\Titre de la vidéo\Titre de la vidéo.mp4</em></p>
+      <p class="error-text" id="files-setup-error" hidden></p>
       <div class="modal-actions">
-        <button id="settings-close" class="btn-secondary btn-full">Fermer</button>
+        <button type="button" id="files-setup-cancel" class="btn-secondary">Annuler</button>
+        <button type="button" id="files-setup-save" class="btn-primary">Enregistrer</button>
       </div>
     </div>
   </div>

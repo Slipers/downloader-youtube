@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.39"
+APP_VERSION = "1.40"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,18 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.40",
+        "date": "27 octobre 2026",
+        "bullets": [
+            "Nouvelles plateformes : Twitch (rediffusions et clips), Dailymotion et X (Twitter), chacune avec ses couleurs.",
+            "Fichier déjà existant : en plus d'écraser ou d'annuler, il est maintenant possible de renommer automatiquement avec un numéro, comme « Titre (1) », « Titre (2) »… Une case « Ne plus me demander » mémorise le choix, modifiable ensuite dans les paramètres.",
+            "Le titre et la description de la vidéo sont maintenant intégrés aux métadonnées du fichier (activé par défaut, désactivable dans les paramètres).",
+            "Nouvelle option « Organisation des fichiers » : choisissez un dossier principal et ce qu'il faut enregistrer (vidéo, miniature, fichier texte avec titre et description) — chaque vidéo obtient son propre sous-dossier.",
+            "Paramètres redessinés sur deux colonnes, avec une section extension navigateur réduite à une seule ligne.",
+            "Correction : le bandeau « Mettre à jour » de l'extension pouvait rester affiché alors qu'il n'y avait rien à mettre à jour.",
+        ],
+    },
     {
         "version": "1.39",
         "date": "27 septembre 2026",

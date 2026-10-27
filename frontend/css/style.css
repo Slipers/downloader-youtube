@@ -1,3 +1,8 @@
+/* An author `display: ...` outranks the UA [hidden] rule, so any element with
+   a display set would ignore `hidden` -- this bit the update toast and the
+   extension banner. One rule for the whole class of bug. */
+[hidden] { display: none !important; }
+
 /* ---------- Design tokens ---------- */
 :root {
   --font: -apple-system, "Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif;
@@ -140,6 +145,24 @@ body {
   --tint-b: #c13584;
   --tint-c: #833ab4;
   --tint-op-boost: .12;
+}
+#app.platform-twitch {
+  --tint-a: #9146ff;
+  --tint-b: #772ce8;
+  --tint-c: #bf94ff;
+  --tint-op-boost: .12;
+}
+#app.platform-dailymotion {
+  --tint-a: #0a6cff;
+  --tint-b: #00aaff;
+  --tint-c: #1b2a6b;
+  --tint-op-boost: .12;
+}
+#app.platform-twitter {
+  --tint-a: #1d9bf0;
+  --tint-b: #536471;
+  --tint-c: #8ecdf8;
+  --tint-op-boost: .1;
 }
 
 /* ---------- Background blobs ---------- */
@@ -481,6 +504,9 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .url-field-icon[hidden] { display: none; }
 #platform-icon-tiktok { color: #25f4ee; }
 #platform-icon-instagram { color: #e1306c; }
+#platform-icon-twitch { color: #9146ff; }
+#platform-icon-dailymotion { color: #0a8cff; }
+#platform-icon-twitter { color: var(--text-0); }
 
 .platform-picker-btn {
   display: flex;
@@ -543,6 +569,9 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .platform-option-icon { width: 18px; height: 18px; flex-shrink: 0; color: #ff0033; }
 .platform-option[data-platform="tiktok"] .platform-option-icon { color: #25f4ee; }
 .platform-option[data-platform="instagram"] .platform-option-icon { color: #e1306c; }
+.platform-option[data-platform="twitch"] .platform-option-icon { color: #9146ff; }
+.platform-option[data-platform="dailymotion"] .platform-option-icon { color: #0a8cff; }
+.platform-option[data-platform="twitter"] .platform-option-icon { color: var(--text-0); }
 .url-field input[type="text"] {
   border: none;
   background: transparent;
@@ -889,8 +918,35 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   transition: transform .4s var(--ease);
 }
 .modal-overlay.active .modal { transform: translateY(0) scale(1); }
-.modal-settings-card { max-width: 460px; }
-.modal-settings-card h3 { margin: 0 0 12px; }
+.modal-settings-card { max-width: 820px; }
+.settings-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.settings-header h3 { margin: 0; }
+.settings-header .stat-card { padding: 8px 16px; margin: 0; gap: 10px; }
+.settings-header .stat-value { font-size: 22px; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+@media (max-width: 760px) { .settings-grid { grid-template-columns: 1fr; } }
+.settings-group {
+  padding: 14px 16px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.settings-group > .settings-section-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.settings-footer { display: flex; gap: 12px; align-items: stretch; margin-top: 14px; }
+.settings-footer .rate-app-btn { flex: 1; margin-bottom: 0; padding: 9px 14px; }
+.settings-select {
+  font-family: inherit; font-size: 13px; padding: 7px 10px;
+  border-radius: 9px; border: 1px solid var(--border);
+  background: var(--bg-1); color: var(--text-0); outline: none; cursor: pointer;
+}
+.settings-select:focus { border-color: var(--accent-2); }
+.settings-select:disabled { opacity: .5; cursor: default; }
+.settings-inline { display: flex; align-items: center; gap: 8px; flex: none; }
+.btn-sm { padding: 8px 14px; font-size: 12.5px; white-space: nowrap; }
+.setup-items-label { display: block; margin-top: 14px; }
+.setup-checks { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 10px; }
+.setup-check { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.setup-check input { width: 16px; height: 16px; accent-color: var(--accent-2); cursor: pointer; }
 
 .settings-section-title {
   margin: clamp(8px, 1.2vh, 22px) 0 clamp(5px, 0.8vh, 12px);
@@ -937,21 +993,6 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 .modal-actions-col { flex-direction: column; }
 .ffmpeg-step h3 { margin: 0 0 10px; font-size: 18px; }
 
-.file-exists-rename-input {
-  width: 100%;
-  min-height: auto;
-  margin-top: 14px;
-  padding: 11px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-1);
-  color: var(--text-0);
-  font-family: inherit;
-  font-size: 13.5px;
-  outline: none;
-}
-.file-exists-rename-input:focus { border-color: var(--accent-2); }
-#file-exists-rename-error { margin-top: 8px; }
 
 /* ---------- Result screen ---------- */
 .result-card { text-align: center; }
@@ -1174,25 +1215,6 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   .options-grid { grid-template-columns: 1fr; }
   .card, .card-wide { padding: 26px 20px 24px; }
 }
-
-/* ---------- Extension settings ---------- */
-.browser-list { display: flex; flex-direction: column; gap: clamp(4px, 0.8vh, 8px); }
-.browser-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: clamp(5px, 0.8vh, 9px) 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-.browser-row-icon {
-  width: 26px; height: 26px; flex: none;
-  border-radius: 8px;
-  background: var(--accent-grad);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 13px; font-weight: 700;
-}
-.browser-row-name { flex: 1; font-size: 13.5px; font-weight: 600; }
-.browser-row .btn-secondary { padding: 8px 16px; font-size: 12.5px; white-space: nowrap; }
 
 /* ---------- Toast ---------- */
 .toast {
