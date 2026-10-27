@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.40"
+APP_VERSION = "1.41"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,15 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.41",
+        "date": "28 octobre 2026",
+        "bullets": [
+            "Correction de la qualité : YouTube renvoie parfois une liste de qualités réduite au 144p ou 240p, et l'application la prenait pour la vraie liste — elle proposait puis téléchargeait cette mauvaise qualité. Elle réessaie maintenant d'elle-même, et si YouTube persiste, l'écran des réglages le signale clairement.",
+            "Correction de l'organisation des fichiers : l'interrupteur « Activer » était désactivé par défaut, si bien qu'un réglage configuré mais non activé ne créait aucun sous-dossier. Un nouveau réglage s'active désormais tout seul dès qu'un dossier est choisi, et les paramètres indiquent s'il est activé ou non.",
+            "Espacements revus sur tous les menus : boutons détachés du contenu, marges plus généreuses, paramètres plus aérés.",
+        ],
+    },
     {
         "version": "1.40",
         "date": "27 octobre 2026",

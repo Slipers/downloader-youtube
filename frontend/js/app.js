@@ -327,8 +327,8 @@ function filesSetupActive() {
 
 function renderFilesSetupHint() {
   const setup = filesSetup();
-  $("files-setup-hint").textContent = filesSetupActive()
-    ? `Activé — ${setup.root_dir}`
+  $("files-setup-hint").textContent = filesSetupActive() ? `Activé — ${setup.root_dir}`
+    : setup.root_dir ? `Désactivé — ${setup.root_dir}`
     : "Un sous-dossier par vidéo, avec miniature et texte.";
 }
 
@@ -338,7 +338,9 @@ function initFilesSetup() {
 
   $("btn-files-setup").addEventListener("click", () => {
     const setup = filesSetup();
-    setSwitch(toggle, !!setup.enabled);
+    // A first-time setup starts switched on: it used to start off, so
+    // configuring it then saving silently changed nothing.
+    setSwitch(toggle, setup.root_dir ? !!setup.enabled : true);
     $("files-setup-dir").value = setup.root_dir || "";
     $("setup-video").checked = setup.video !== false;
     $("setup-thumbnail").checked = setup.thumbnail !== false;
@@ -349,7 +351,10 @@ function initFilesSetup() {
 
   $("btn-files-setup-browse").addEventListener("click", async () => {
     const folder = await Api.pickFolder(false);
-    if (folder) $("files-setup-dir").value = folder;
+    if (folder) {
+      $("files-setup-dir").value = folder;
+      setSwitch(toggle, true);  // picking a folder means the user wants it used
+    }
   });
 
   $("files-setup-cancel").addEventListener("click", () => closeModal("modal-files-setup"));
@@ -1238,6 +1243,11 @@ function populateOptionsScreen() {
   renderQualityGrid();
   renderFpsGrid();
   setExportType(state.exportType);
+
+  const best = Math.max(0, ...(state.videoInfo?.available_heights || []));
+  $("quality-warning").hidden = !state.videoInfo?.ladder_incomplete;
+  $("quality-warning").textContent =
+    `YouTube ne fournit pour l'instant que du ${best}p pour cette vidéo. Si elle existe en meilleure qualité, revenez en arrière et réessayez dans un moment.`;
 
   const setupOn = filesSetupActive();
   $("dest-input").value = setupOn ? filesSetup().root_dir : state.destDir;

@@ -152,6 +152,7 @@
               </span>
             </label>
             <div id="quality-grid" class="pill-grid"></div>
+            <p id="quality-warning" class="hint-text warn" hidden></p>
           </div>
 
           <div class="option-block" id="fps-block">
@@ -432,7 +433,7 @@
           </div>
           <div class="settings-row">
             <div class="settings-row-text">
-              <p class="settings-row-title">Extension navigateur</p>
+              <p class="settings-row-title">Extension</p>
               <p class="hint-text" id="extension-status-text">Vérification…</p>
             </div>
             <div class="settings-inline"><select id="ext-browser-select" class="settings-select"></select><button type="button" id="btn-install-extension" class="btn-secondary btn-sm">Installer</button></div>
@@ -478,7 +479,7 @@
         <div class="settings-row-text"><p class="settings-row-title">Activer</p></div>
         <button id="toggle-files-setup" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
       </div>
-      <label class="option-label">Dossier principal</label>
+      <label class="option-label setup-items-label">Dossier principal</label>
       <div class="input-row">
         <input type="text" id="files-setup-dir" readonly placeholder="Choisissez un dossier...">
         <button type="button" id="btn-files-setup-browse" class="btn-secondary btn-browse">Parcourir</button>

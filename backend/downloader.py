@@ -105,18 +105,36 @@ def needs_signed_in_retry(message: str) -> bool:
 _MUXED_FALLBACK_ITAGS = {"18", "22"}
 
 
+# A YouTube ladder topping out below this is far more likely withheld than
+# real. Genuinely low-res uploads exist (old ones), but YouTube's stripped
+# responses are what users actually hit -- and those can keep a few low
+# adaptive formats (144p, 240p), not only the legacy muxed one.
+_SUSPICIOUSLY_LOW_HEIGHT = 480
+
+
+def _max_video_height(info: dict) -> int:
+    return max(
+        (f.get("height") or 0 for f in (info.get("formats") or []) if f.get("vcodec") not in (None, "none")),
+        default=0,
+    )
+
+
 def has_full_quality_ladder(info: dict) -> bool:
-    """False when extraction came back stripped down to the legacy muxed
-    format(s) only -- i.e. the adaptive ladder was withheld. Retrying such a
-    result with cookies is what gets the real qualities back, instead of
-    quietly offering the user 360p for a 1080p video."""
+    """False when extraction came back with the quality ladder withheld:
+    either only the legacy muxed format(s) survived, or (YouTube) nothing at
+    or above 480p did. Retrying such a result is what gets the real qualities
+    back, instead of quietly offering the user 144p for a 1080p video."""
     video_formats = [
         f for f in (info.get("formats") or [])
         if f.get("vcodec") not in (None, "none")
     ]
     if not video_formats:
         return False
-    return any(str(f.get("format_id")) not in _MUXED_FALLBACK_ITAGS for f in video_formats)
+    if all(str(f.get("format_id")) in _MUXED_FALLBACK_ITAGS for f in video_formats):
+        return False
+    if info.get("extractor_key") == "Youtube":
+        return _max_video_height(info) >= _SUSPICIOUSLY_LOW_HEIGHT
+    return True
 
 
 class DegradedSelection(Exception):
@@ -187,9 +205,10 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
         if accept is None or accept(result):
             return result, source
         # Worked, but the caller says it's not good enough (e.g. the quality
-        # ladder was withheld). Keep it as a fallback and try a signed-in
-        # source -- never fail outright over it.
-        if rejected is None:
+        # ladder was withheld). Keep the best such result as a fallback and try
+        # a signed-in source -- never fail outright over it. (`accept` is only
+        # ever used with info dicts, hence the height comparison.)
+        if rejected is None or _max_video_height(result) > _max_video_height(rejected[0]):
             rejected = (result, source)
 
     if rejected is not None:
@@ -234,9 +253,19 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=False)
 
-    info, cookies_browser_used = _with_auto_cookies(
-        make_opts, run, cookies_file=cookies_file, accept=has_full_quality_ladder,
-    )
+    # A fresh extraction usually gets the full ladder back, so a few rounds
+    # before settling for the best one seen.
+    best = None
+    for _ in range(DEGRADED_SELECTION_ATTEMPTS):
+        info, source = _with_auto_cookies(
+            make_opts, run, cookies_file=cookies_file, accept=has_full_quality_ladder,
+        )
+        if has_full_quality_ladder(info):
+            best = (info, source)
+            break
+        if best is None or _max_video_height(info) > _max_video_height(best[0]):
+            best = (info, source)
+    info, cookies_browser_used = best
 
     formats = info.get("formats") or []
     video_formats = [f for f in formats if f.get("vcodec") not in (None, "none")]
@@ -281,6 +310,9 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
         "size_by_height": {str(k): v for k, v in size_by_height.items()},
         "storyboard": _pick_storyboard(formats),
         "cookies_browser_used": cookies_browser_used,
+        # Still withheld after every retry: the settings screen says so, so a
+        # 144p-only list is never mistaken for the video's real quality.
+        "ladder_incomplete": not has_full_quality_ladder(info),
     }
 
 
