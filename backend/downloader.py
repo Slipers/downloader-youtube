@@ -2,6 +2,7 @@
 import base64
 import glob
 import os
+import re
 import time
 from collections import deque
 from pathlib import Path
@@ -97,7 +98,23 @@ def needs_signed_in_retry(message: str) -> bool:
         or "only images are available" in lowered
         or "downloaded file is empty" in lowered
         or "the page needs to be reloaded" in lowered
+        # yt-dlp's login-required errors on any site: the user's browser
+        # session may well be signed in there.
+        or "--cookies" in lowered
     )
+
+
+_VIMEO_PAGE_RE = re.compile(r"^https?://(?:www\.)?vimeo\.com/(\d+)(?:/([0-9a-f]+))?/?(?:[?#].*)?$")
+
+
+def normalize_url(url: str) -> str:
+    """yt-dlp's vimeo.com page client now insists on a login, while the
+    player URL of the same public video still works anonymously."""
+    match = _VIMEO_PAGE_RE.match(url)
+    if match:
+        video_id, unlisted_hash = match.groups()
+        return f"https://player.vimeo.com/video/{video_id}" + (f"?h={unlisted_hash}" if unlisted_hash else "")
+    return url
 
 
 # Legacy progressive itags: the ones YouTube still hands an anonymous client
@@ -128,13 +145,16 @@ def has_full_quality_ladder(info: dict) -> bool:
         f for f in (info.get("formats") or [])
         if f.get("vcodec") not in (None, "none")
     ]
+    # Only YouTube withholds its ladder. Anywhere else (audio-only sites, generic
+    # pages whose codecs are unknown) a "no video format" answer is the real
+    # one, and retrying it would run the whole cookie cascade three times over.
+    if info.get("extractor_key") != "Youtube":
+        return True
     if not video_formats:
         return False
     if all(str(f.get("format_id")) in _MUXED_FALLBACK_ITAGS for f in video_formats):
         return False
-    if info.get("extractor_key") == "Youtube":
-        return _max_video_height(info) >= _SUSPICIOUSLY_LOW_HEIGHT
-    return True
+    return _max_video_height(info) >= _SUSPICIOUSLY_LOW_HEIGHT
 
 
 class DegradedSelection(Exception):
@@ -220,6 +240,9 @@ def _base_opts() -> dict:
     opts = {
         "quiet": True,
         "no_warnings": True,
+        # A page with several videos (generic pages, multi-video posts) comes
+        # back as a playlist: only ever take the first one.
+        "playlist_items": "1",
         "extractor_args": {"youtube": {"player_client": DEFAULT_PLAYER_CLIENTS}},
     }
     runtime = js_runtime.ydl_opts()
@@ -243,7 +266,21 @@ def _pick_storyboard(formats: list) -> dict | None:
     }
 
 
+class NoVideoFound(Exception):
+    """The page was read fine but holds nothing downloadable."""
+
+
+def _first_entry(info: dict) -> dict:
+    if info.get("_type") != "playlist":
+        return info
+    entries = [e for e in (info.get("entries") or []) if e]
+    if not entries:
+        raise NoVideoFound("no entries")
+    return entries[0]
+
+
 def get_video_info(url: str, cookies_file: str | None = None) -> dict:
+    url = normalize_url(url)
     def make_opts(cookie_extra):
         opts = {**_base_opts(), "noplaylist": True, "skip_download": True}
         opts.update(cookie_extra)
@@ -251,7 +288,7 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
 
     def run(opts):
         with yt_dlp.YoutubeDL(opts) as ydl:
-            return ydl.extract_info(url, download=False)
+            return _first_entry(ydl.extract_info(url, download=False))
 
     # A fresh extraction usually gets the full ladder back, so a few rounds
     # before settling for the best one seen.
@@ -313,6 +350,7 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
         # Still withheld after every retry: the settings screen says so, so a
         # 144p-only list is never mistaken for the video's real quality.
         "ladder_incomplete": not has_full_quality_ladder(info),
+        "audio_only": bool(formats) and all(f.get("vcodec") == "none" for f in formats),
     }
 
 
@@ -490,6 +528,7 @@ def download(
     extraction a stripped ladder even when the first one was complete -- the
     `height<=X` filter then quietly settles for less. The selection is checked
     before anything downloads and retried if it falls short."""
+    url = normalize_url(url)
     roller = _RollingSpeed()
     last_tmpfile = {"path": None}
 
@@ -542,7 +581,7 @@ def download(
                     raise DegradedSelection(
                         f"got {_selected_video_height(info)}p, expected {expected_height}p"
                     )
-                info = ydl.process_ie_result(info, download=True)
+                info = _first_entry(ydl.process_ie_result(info, download=True))
                 return ydl, info, opts
         return run
 

@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.41"
+APP_VERSION = "1.42"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,17 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.42",
+        "date": "28 octobre 2026",
+        "bullets": [
+            "Nouvelle page de choix de la plateforme : le bouton principal ouvre une grille de plus de 40 sites (réseaux sociaux, vidéo, TV & replay, audio), chacun à ses couleurs, avec une barre de recherche et des filtres par catégorie.",
+            "Nouveaux sites : Facebook, Vimeo, Reddit, Snapchat, Pinterest, LinkedIn, Bluesky, Kick, Rumble, Bilibili, france.tv, franceinfo, Arte, BFMTV, ZDF, SoundCloud, Bandcamp, Radio France et bien d'autres.",
+            "« Autre site » : collez le lien de n'importe quelle page, la vidéo est détectée automatiquement. Si la page n'en contient pas (google.com par exemple), un message clair le dit.",
+            "Un lien collé est reconnu tout seul : un lien TikTok collé sur la page YouTube bascule directement sur TikTok.",
+            "Analyse plus rapide pour les sites hors YouTube (plus de tentatives inutiles), messages d'erreur plus clairs (vidéo privée, protégée, indisponible dans votre pays, page introuvable).",
+        ],
+    },
     {
         "version": "1.41",
         "date": "28 octobre 2026",

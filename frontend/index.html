@@ -44,13 +44,42 @@
   <!-- Écran 1 : accueil -->
   <section id="screen-start" class="screen active">
     <div class="start-content">
-      <p class="eyebrow">Téléchargeur YouTube</p>
+      <p class="eyebrow">YouTube, TikTok, Instagram et 40+ autres sites</p>
       <h1 class="logo">Downloader <span class="accent">Youtube</span></h1>
       <p class="tagline">Collez un lien, choisissez la qualité, téléchargez. Simple, rapide, élégant.</p>
       <button id="btn-start" class="btn-primary btn-hero">
-        <span>Démarrer</span>
+        <span>Télécharger une vidéo</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
+    </div>
+  </section>
+
+  <!-- Écran 1b : choix de la plateforme -->
+  <section id="screen-platforms" class="screen screen-platforms">
+    <div class="platforms-shell">
+      <div class="platforms-head">
+        <div class="screen-header">
+          <button class="btn-back" data-back="screen-start" aria-label="Retour">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="screen-header-text">
+            <h2>D'où vient la vidéo ?</h2>
+            <p class="subtitle">Choisissez la plateforme, ou « Autre site » pour n'importe quel lien.</p>
+          </div>
+        </div>
+        <div class="platform-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m20.5 20.5-4.2-4.2"/></svg>
+          <input type="text" id="platform-search-input" placeholder="Rechercher une plateforme…" autocomplete="off" spellcheck="false">
+          <button type="button" id="platform-search-clear" class="platform-search-clear" aria-label="Effacer" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div id="platform-chips" class="platform-chips" role="tablist"></div>
+      </div>
+      <div id="platforms-scroll" class="platforms-scroll">
+        <div id="platforms-body"></div>
+        <p id="platforms-empty" class="platforms-empty" hidden>Aucune plateforme ne correspond. Utilisez « Autre site » : n'importe quel lien fonctionne.</p>
+      </div>
     </div>
   </section>
 
@@ -58,7 +87,7 @@
   <section id="screen-url" class="screen">
     <div class="card">
       <div class="screen-header">
-        <button class="btn-back" data-back="screen-start" aria-label="Retour">
+        <button class="btn-back" data-back="screen-platforms" aria-label="Retour">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <div class="screen-header-text">
@@ -68,46 +97,12 @@
       </div>
 
       <div class="url-field">
-        <button type="button" id="platform-picker-btn" class="platform-picker-btn" aria-label="Choisir la plateforme" title="Choisir la plateforme">
-          <svg id="platform-icon-youtube" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg>
-          <svg id="platform-icon-tiktok" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-          <svg id="platform-icon-instagram" class="url-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
-          <svg id="platform-icon-twitch" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-          <svg id="platform-icon-dailymotion" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><circle cx="10.5" cy="14" r="5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 3v16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
-          <svg id="platform-icon-twitter" class="url-field-icon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
-          <svg class="platform-picker-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
+        <button type="button" id="url-platform-btn" class="url-platform-btn" aria-label="Changer de plateforme" title="Changer de plateforme"></button>
         <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
         <button id="btn-paste" class="btn-paste" type="button" title="Coller depuis le presse-papiers">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
         </button>
 
-        <div id="platform-picker-menu" class="platform-picker-menu" hidden>
-          <button type="button" class="platform-option active" data-platform="youtube">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg>
-            <span>YouTube</span>
-          </button>
-          <button type="button" class="platform-option" data-platform="tiktok">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-            <span>TikTok</span>
-          </button>
-          <button type="button" class="platform-option" data-platform="instagram">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z"/><path d="M17.5 6.5h.01"/></svg>
-            <span>Instagram</span>
-          </button>
-          <button type="button" class="platform-option" data-platform="twitch">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-            <span>Twitch</span>
-          </button>
-          <button type="button" class="platform-option" data-platform="dailymotion">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="10.5" cy="14" r="5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 3v16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
-            <span>Dailymotion</span>
-          </button>
-          <button type="button" class="platform-option" data-platform="twitter">
-            <svg class="platform-option-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
-            <span>X (Twitter)</span>
-          </button>
-        </div>
       </div>
       <div class="input-row url-submit-row">
         <button id="btn-url-next" class="btn-arrow" disabled aria-label="Étape suivante">
@@ -661,6 +656,7 @@
 
 </div>
 <script src="js/api.js"></script>
+<script src="js/platforms.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

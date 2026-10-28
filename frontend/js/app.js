@@ -1,36 +1,6 @@
 /* Screen state machine + UI wiring for Downloader Youtube. */
 
 const QUALITY_ORDER = ["auto", "144p", "480p", "720p", "1080p", "1440p", "2160p"];
-const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]+/i;
-const TIKTOK_URL_RE = /^https?:\/\/(www\.|vm\.|vt\.|m\.)?tiktok\.com\//i;
-const INSTAGRAM_URL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[\w-]+/i;
-
-// Twitch: VODs and clips only -- a bare channel URL is an endless live stream.
-const TWITCH_URL_RE = /^https?:\/\/(?:(?:www\.|m\.)?twitch\.tv\/(?:videos\/\d+|[\w-]+\/clip\/[\w-]+)|clips\.twitch\.tv\/[\w-]+)/i;
-const DAILYMOTION_URL_RE = /^https?:\/\/(?:(?:www\.)?dailymotion\.com\/video\/\w+|dai\.ly\/\w+)/i;
-const TWITTER_URL_RE = /^https?:\/\/(?:www\.|mobile\.)?(?:twitter|x)\.com\/\w+\/status\/\d+/i;
-
-const PLATFORM_URL_RE = {
-  youtube: YT_URL_RE, tiktok: TIKTOK_URL_RE, instagram: INSTAGRAM_URL_RE,
-  twitch: TWITCH_URL_RE, dailymotion: DAILYMOTION_URL_RE, twitter: TWITTER_URL_RE,
-};
-const PLATFORM_PLACEHOLDER = {
-  youtube: "https://www.youtube.com/watch?v=...",
-  tiktok: "https://www.tiktok.com/@utilisateur/video/...",
-  instagram: "https://www.instagram.com/reel/...",
-  twitch: "https://www.twitch.tv/videos/...",
-  dailymotion: "https://www.dailymotion.com/video/...",
-  twitter: "https://x.com/utilisateur/status/...",
-};
-const PLATFORM_SUBTITLE = {
-  youtube: "Copiez l'URL YouTube de la vidéo que vous souhaitez télécharger.",
-  tiktok: "Copiez l'URL TikTok de la vidéo que vous souhaitez télécharger.",
-  instagram: "Copiez l'URL Instagram de la vidéo (reel ou post) que vous souhaitez télécharger.",
-  twitch: "Copiez l'URL d'une rediffusion ou d'un clip Twitch.",
-  dailymotion: "Copiez l'URL Dailymotion de la vidéo que vous souhaitez télécharger.",
-  twitter: "Copiez l'URL du post X (Twitter) qui contient la vidéo.",
-};
-
 const state = {
   settings: null,
   qualityTiers: {},
@@ -766,48 +736,128 @@ function updateRatingBadge() {
   $("rate-app-badge").hidden = !due;
 }
 
-/* ---------- start -> url ---------- */
+/* ---------- start -> platforms -> url ---------- */
 function initStartScreen() {
-  $("btn-start").addEventListener("click", () => {
-    setPlatform(state.platform);
-    showScreen("screen-url");
-    setTimeout(() => $("url-input").focus(), 250);
-  });
+  $("btn-start").addEventListener("click", openPlatformsScreen);
 }
 
-function setPlatform(platform) {
-  state.platform = platform;
-  // `.hidden` as a JS property is unreliable on <svg> elements in some engines
-  // (only the HTML-specific mixin reliably supports it) -- toggleAttribute
-  // works on any Element and correctly reflects to the [hidden] CSS selector.
-  Object.keys(PLATFORM_URL_RE).forEach((p) => {
-    $(`platform-icon-${p}`).toggleAttribute("hidden", platform !== p);
-    $("app").classList.toggle(`platform-${p}`, platform === p);
-  });
-  $("url-input").placeholder = PLATFORM_PLACEHOLDER[platform];
-  $("url-screen-subtitle").textContent = PLATFORM_SUBTITLE[platform];
-  document.querySelectorAll(".platform-option").forEach((opt) => {
-    opt.classList.toggle("active", opt.dataset.platform === platform);
-  });
+function setTint(p) {
+  const app = $("app");
+  if (!p) {
+    ["--tint-a", "--tint-b", "--tint-c", "--tint-op-boost"].forEach((v) => app.style.removeProperty(v));
+    return;
+  }
+  app.style.setProperty("--tint-a", p.tint[0]);
+  app.style.setProperty("--tint-b", p.tint[1]);
+  app.style.setProperty("--tint-c", p.tint[2]);
+  app.style.setProperty("--tint-op-boost", ".12");
+}
+
+function setPlatform(id) {
+  const p = PLATFORM_BY_ID[id] || PLATFORM_BY_ID.youtube;
+  state.platform = p.id;
+  setTint(p);
+  $("url-platform-btn").innerHTML = platformBadgeHtml(p, "platform-badge-sm");
+  $("url-input").placeholder = p.placeholder;
+  $("url-screen-subtitle").textContent = p.subtitle;
+}
+
+function openPlatformsScreen() {
+  setTint(null);
+  $("platform-search-input").value = "";
+  state.platformCat = "all";
+  renderPlatformGrid();
+  showScreen("screen-platforms");
+  $("platforms-scroll").scrollTop = 0;
+  setTimeout(() => $("platform-search-input").focus(), 250);
+}
+
+function choosePlatform(id) {
+  setPlatform(id);
   $("url-input").dispatchEvent(new Event("input"));
+  showScreen("screen-url");
+  setTimeout(() => $("url-input").focus(), 250);
 }
 
-function initPlatformPicker() {
-  const btn = $("platform-picker-btn");
-  const menu = $("platform-picker-menu");
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    menu.hidden = !menu.hidden;
+function platformTileHtml(p, i, featured = false) {
+  return `<button type="button" class="platform-tile${featured ? " platform-tile-featured" : ""}" data-platform="${p.id}"
+    style="--brand:${p.color};--brand-2:${p.color2};--i:${Math.min(i, 14)}">
+    ${platformBadgeHtml(p)}
+    <span class="platform-tile-text"><span class="platform-tile-name">${p.name}</span><span class="platform-tile-desc">${p.desc}</span></span>
+    ${featured ? '<svg class="platform-tile-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>' : ""}
+  </button>`;
+}
+
+function normalizeSearch(text) {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+}
+
+function renderPlatformGrid() {
+  const query = normalizeSearch($("platform-search-input").value);
+  const cat = state.platformCat || "all";
+  $("platform-search-clear").hidden = !query;
+  const matches = (p) => (cat === "all" || p.cat === cat)
+    && (!query || normalizeSearch(`${p.name} ${p.desc}`).includes(query));
+
+  let i = 0;
+  let html = "";
+  // "Autre site" stays reachable whatever the filter: it is the answer to
+  // every search that finds nothing.
+  html += `<div class="platform-featured">${platformTileHtml(PLATFORM_OTHER, i++, true)}</div>`;
+  let found = 0;
+  PLATFORM_CATEGORIES.forEach((c) => {
+    const items = PLATFORMS.filter((p) => p.cat === c.id && matches(p));
+    if (!items.length) return;
+    found += items.length;
+    html += `<section class="platform-section"><h3 class="platform-section-title">${c.label}<span>${items.length}</span></h3>
+      <div class="platform-grid">${items.map((p) => platformTileHtml(p, i++)).join("")}</div></section>`;
   });
-  document.querySelectorAll(".platform-option").forEach((opt) => {
-    opt.addEventListener("click", () => {
-      setPlatform(opt.dataset.platform);
-      menu.hidden = true;
-    });
+  $("platforms-body").innerHTML = html;
+  $("platforms-empty").hidden = found > 0;
+
+  $("platform-chips").innerHTML = [{ id: "all", label: "Toutes" }].concat(PLATFORM_CATEGORIES)
+    .map((c) => `<button type="button" class="platform-chip${c.id === cat ? " active" : ""}" data-cat="${c.id}">${c.label}</button>`)
+    .join("");
+}
+
+function initPlatformsScreen() {
+  const input = $("platform-search-input");
+  input.addEventListener("input", renderPlatformGrid);
+  input.addEventListener("keydown", (e) => {
+    // Enter picks the first match -- typing "tik" + Enter is the fast path.
+    if (e.key === "Enter") {
+      const first = $("platforms-body").querySelector(".platform-grid .platform-tile")
+        || $("platforms-body").querySelector(".platform-tile");
+      if (first) first.click();
+    } else if (e.key === "Escape" && input.value) {
+      input.value = "";
+      renderPlatformGrid();
+    }
   });
-  document.addEventListener("click", (e) => {
-    if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  $("platform-search-clear").addEventListener("click", () => {
+    input.value = "";
+    renderPlatformGrid();
+    input.focus();
   });
+  $("platform-chips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".platform-chip");
+    if (!chip) return;
+    state.platformCat = chip.dataset.cat;
+    renderPlatformGrid();
+    $("platforms-scroll").scrollTop = 0;
+  });
+  const body = $("platforms-body");
+  body.addEventListener("click", (e) => {
+    const tile = e.target.closest(".platform-tile");
+    if (tile) choosePlatform(tile.dataset.platform);
+  });
+  // Hovering a tile previews its colors in the background blobs.
+  body.addEventListener("mouseover", (e) => {
+    const tile = e.target.closest(".platform-tile");
+    if (tile) setTint(PLATFORM_BY_ID[tile.dataset.platform]);
+  });
+  body.addEventListener("mouseleave", () => setTint(null));
+  $("url-platform-btn").addEventListener("click", openPlatformsScreen);
 }
 
 function initUrlScreen() {
@@ -815,7 +865,25 @@ function initUrlScreen() {
   const nextBtn = $("btn-url-next");
   input.addEventListener("input", () => {
     $("url-error").hidden = true;
-    nextBtn.disabled = !PLATFORM_URL_RE[state.platform].test(input.value.trim());
+    const url = input.value.trim();
+    // A link from another platform than the one picked just switches to it,
+    // and any other web page goes to "Autre site" -- no dead end either way.
+    // (Only a host with a path after it switches: half-typed links don't
+    // flicker the colors.)
+    const looksComplete = /^https?:\/\/[^/\s]+\.[a-z]{2,}\//i.test(url);
+    const match = platformForUrl(url, state.platform)
+      || ((looksComplete || state.platform === "autre") && PLATFORM_OTHER.url.test(url) ? PLATFORM_OTHER : null);
+    if (match && match.id !== state.platform) setPlatform(match.id);
+    const p = PLATFORM_BY_ID[state.platform];
+    const ok = !!match && (p.url || p.hostRe).test(url);
+    nextBtn.disabled = !ok;
+    // Right site, wrong kind of page (a channel, a live stream...).
+    if (match && !ok) {
+      $("url-error").hidden = false;
+      $("url-error").textContent = p.id === "twitch"
+        ? "Les directs Twitch ne peuvent pas être téléchargés : collez le lien d'une rediffusion ou d'un clip."
+        : `Ce lien ${p.name} ne mène pas directement à une vidéo.`;
+    }
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !nextBtn.disabled) nextBtn.click();
@@ -842,7 +910,7 @@ function initUrlScreen() {
     }
   });
 
-  initPlatformPicker();
+  initPlatformsScreen();
 
   document.querySelectorAll('[data-back]').forEach((btn) => {
     btn.addEventListener("click", () => showScreen(btn.dataset.back));
@@ -1239,6 +1307,13 @@ function populateOptionsScreen() {
     state.fps = "auto";
     state.fpsIsManual = false;
   }
+
+  // SoundCloud, podcasts...: nothing but audio to offer.
+  const audioOnly = !!state.videoInfo?.audio_only;
+  if (audioOnly) state.exportType = "audio_only";
+  document.querySelectorAll("#export-type .export-card").forEach((btn) => {
+    btn.disabled = audioOnly && btn.dataset.value !== "audio_only";
+  });
 
   renderQualityGrid();
   renderFpsGrid();

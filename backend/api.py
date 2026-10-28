@@ -13,20 +13,10 @@ from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
 from . import browsers, clipboard, config, cookie_store, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
 
-YOUTUBE_URL_RE = re.compile(
-    r"^https?://(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+"
-)
-TIKTOK_URL_RE = re.compile(r"^https?://(www\.|vm\.|vt\.|m\.)?tiktok\.com/")
-INSTAGRAM_URL_RE = re.compile(r"^https?://(www\.)?instagram\.com/(reel|p|tv)/[\w-]+")
-# VODs and clips only: a bare channel URL is a live stream that never ends.
-TWITCH_URL_RE = re.compile(
-    r"^https?://(?:(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|[\w-]+/clip/[\w-]+)|clips\.twitch\.tv/[\w-]+)"
-)
-DAILYMOTION_URL_RE = re.compile(r"^https?://(?:(?:www\.)?dailymotion\.com/video/\w+|dai\.ly/\w+)")
-TWITTER_URL_RE = re.compile(r"^https?://(?:www\.|mobile\.)?(?:twitter|x)\.com/\w+/status/\d+")
-SUPPORTED_URL_PATTERNS = (
-    YOUTUBE_URL_RE, TIKTOK_URL_RE, INSTAGRAM_URL_RE, TWITCH_URL_RE, DAILYMOTION_URL_RE, TWITTER_URL_RE,
-)
+YOUTUBE_URL_RE = re.compile(r"^https?://(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)/")
+# Per-platform checks live in the frontend catalog; any web page is worth
+# handing to yt-dlp, whose generic extractor covers sites it has no rule for.
+WEB_URL_RE = re.compile(r"^https?://[^\s/$.?#][^\s]*$", re.IGNORECASE)
 
 WINDOW_TITLE = "Downloader Youtube"
 
@@ -100,13 +90,10 @@ class Api:
             return False
 
     # ---- video metadata -------------------------------------------------
-    def is_valid_youtube_url(self, url: str):
-        url = (url or "").strip()
-        return bool(url and any(pattern.match(url) for pattern in SUPPORTED_URL_PATTERNS))
-
     def fetch_video_info(self, url: str):
-        if not self.is_valid_youtube_url(url):
-            return {"ok": False, "error": "Ce lien ne ressemble pas à une URL de vidéo prise en charge."}
+        url = (url or "").strip()
+        if not WEB_URL_RE.match(url):
+            return {"ok": False, "error": "Ce lien n'est pas une adresse web valide (elle doit commencer par https://)."}
 
         # There's no real byte-level progress for a metadata fetch (it's one
         # blocking call, not a download), so this reports elapsed time against
@@ -137,22 +124,38 @@ class Api:
             # list at 360p, so wait for the startup install to finish rather
             # than show a ladder the video doesn't actually have.
             self.ensure_js_runtime()
-            info = downloader.get_video_info(url.strip())
+            info = downloader.get_video_info(url)
             self._push("video_fetch_progress", {"percent": 100})
             return {"ok": True, "data": info}
         except Exception as exc:
-            return {"ok": False, "error": self._friendly_error(exc)}
+            return {"ok": False, "error": self._friendly_error(exc, url)}
         finally:
             stop_ticker.set()
             ticker_thread.join(timeout=1)
 
-    def _friendly_error(self, exc: Exception) -> str:
+    def _friendly_error(self, exc: Exception, url: str = "") -> str:
         message = str(exc)
+        lowered = message.lower()
+        if isinstance(exc, downloader.NoVideoFound) or "unsupported url" in lowered:
+            return "Aucune vidéo téléchargeable n'a été trouvée sur cette page. Vérifiez qu'il s'agit bien du lien d'une vidéo."
+        if "drm" in lowered:
+            return "Cette vidéo est protégée contre la copie (DRM) : elle ne peut pas être téléchargée."
+        if "not available in your country" in lowered or "geo restrict" in lowered or "from your location" in lowered:
+            return "Cette vidéo n'est pas disponible depuis votre pays."
+        if "is not a valid url" in lowered or "getaddrinfo" in lowered or "name or service not known" in lowered:
+            return "Ce site est introuvable. Vérifiez le lien et votre connexion internet."
+        if "http error 404" in lowered:
+            return "Cette page n'existe pas (ou plus). Vérifiez le lien."
+        if "private" in lowered:
+            return "Cette vidéo est privée : elle n'est accessible qu'à son propriétaire."
+        if not YOUTUBE_URL_RE.match(url) and ("login" in lowered or "log in" in lowered or "--cookies" in lowered):
+            return ("Cette vidéo nécessite d'être connecté au site. Ouvrez-la dans votre navigateur en étant "
+                    "connecté, puis réessayez.")
         # These all mean the same thing to the user: no usable session. Lead
         # with the in-app sign-in since it needs nothing installed, but name
         # the extension too -- both fill the same store and either one is
         # enough on its own.
-        if (
+        if YOUTUBE_URL_RE.match(url) and (
             downloader.is_decrypt_blocked_error(message)
             or downloader.is_bot_check_error(message)
             or downloader.is_cookie_extraction_error(message)
@@ -326,7 +329,7 @@ class Api:
         except DownloadCancelled:
             self._push("download_cancelled", {})
         except Exception as exc:
-            self._push("download_error", {"error": self._friendly_error(exc)})
+            self._push("download_error", {"error": self._friendly_error(exc, url)})
 
     # ---- browser extension ------------------------------------------------
     def get_extension_status(self):

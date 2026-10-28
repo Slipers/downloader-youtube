@@ -121,50 +121,13 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  /* Overridden per platform below -- lets the background lean red for
-     YouTube or blue for TikTok so the two are visually distinct at a glance. */
+  /* Set inline per platform (platforms.js) -- the background leans to the
+     chosen platform's brand colors. */
   --tint-a: var(--accent);
   --tint-b: var(--accent-2);
   --tint-c: var(--accent-3);
   --tint-op-boost: 0;
 }
-#app.platform-youtube {
-  --tint-a: #ff3366;
-  --tint-b: #ff5470;
-  --tint-c: #ff8a5c;
-  --tint-op-boost: .12;
-}
-#app.platform-tiktok {
-  --tint-a: #2f7dff;
-  --tint-b: #00c2ff;
-  --tint-c: #1450c9;
-  --tint-op-boost: .12;
-}
-#app.platform-instagram {
-  --tint-a: #f77737;
-  --tint-b: #c13584;
-  --tint-c: #833ab4;
-  --tint-op-boost: .12;
-}
-#app.platform-twitch {
-  --tint-a: #9146ff;
-  --tint-b: #772ce8;
-  --tint-c: #bf94ff;
-  --tint-op-boost: .12;
-}
-#app.platform-dailymotion {
-  --tint-a: #0a6cff;
-  --tint-b: #00aaff;
-  --tint-c: #1b2a6b;
-  --tint-op-boost: .12;
-}
-#app.platform-twitter {
-  --tint-a: #1d9bf0;
-  --tint-b: #536471;
-  --tint-c: #8ecdf8;
-  --tint-op-boost: .1;
-}
-
 /* ---------- Background blobs ---------- */
 .bg-blobs {
   position: absolute;
@@ -498,80 +461,6 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   border-color: var(--accent-2);
   box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.15);
 }
-.url-field-icon { width: 22px; height: 22px; color: #ff0033; flex-shrink: 0; }
-/* [hidden] on an inline <svg> isn't reliably display:none by default in every
-   engine (unlike plain HTML elements) -- state it explicitly. */
-.url-field-icon[hidden] { display: none; }
-#platform-icon-tiktok { color: #25f4ee; }
-#platform-icon-instagram { color: #e1306c; }
-#platform-icon-twitch { color: #9146ff; }
-#platform-icon-dailymotion { color: #0a8cff; }
-#platform-icon-twitter { color: var(--text-0); }
-
-.platform-picker-btn {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  border: none;
-  background: transparent;
-  padding: 4px;
-  margin: -4px 0 -4px -4px;
-  border-radius: 10px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background .2s;
-}
-.platform-picker-btn:hover { background: var(--surface); }
-.platform-picker-caret { width: 12px; height: 12px; color: var(--text-2); flex-shrink: 0; }
-
-/* Scoped to :not([hidden]) -- an unconditional `display: flex` here would
-   outrank the native [hidden] UA default (same bug class as the popup's
-   state divs) and the menu would never actually close. */
-.platform-picker-menu[hidden] { display: none; }
-.platform-picker-menu:not([hidden]) {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 12px;
-  min-width: 170px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
-  padding: 6px;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  animation: ytdls-state-in-local 0.18s var(--ease);
-}
-@keyframes ytdls-state-in-local {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.platform-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border: none;
-  background: transparent;
-  border-radius: 9px;
-  color: var(--text-1);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: background .15s, color .15s;
-}
-.platform-option:hover { background: var(--surface); color: var(--text-0); }
-.platform-option.active { background: var(--surface-strong); color: var(--text-0); }
-.platform-option-icon { width: 18px; height: 18px; flex-shrink: 0; color: #ff0033; }
-.platform-option[data-platform="tiktok"] .platform-option-icon { color: #25f4ee; }
-.platform-option[data-platform="instagram"] .platform-option-icon { color: #e1306c; }
-.platform-option[data-platform="twitch"] .platform-option-icon { color: #9146ff; }
-.platform-option[data-platform="dailymotion"] .platform-option-icon { color: #0a8cff; }
-.platform-option[data-platform="twitter"] .platform-option-icon { color: var(--text-0); }
 .url-field input[type="text"] {
   border: none;
   background: transparent;
@@ -788,7 +677,8 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   transition: transform .2s var(--ease), border-color .2s, background .2s, color .2s;
 }
 .export-card svg { width: 22px; height: 22px; }
-.export-card:hover { border-color: var(--accent-2); transform: translateY(-2px); color: var(--text-0); }
+.export-card:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.export-card:hover:not(:disabled) { border-color: var(--accent-2); transform: translateY(-2px); color: var(--text-0); }
 .export-card.active {
   background: var(--accent-grad);
   border-color: transparent;
@@ -1307,7 +1197,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
 /* Scoped to :not([hidden]) -- an unconditional `display: flex` here would
    outrank the native [hidden] UA default, so the toast would show from page
    load with an empty version number, whether or not an update exists.
-   (Same bug class as .platform-picker-menu above.) */
+   */
 .update-corner-toast[hidden] { display: none; }
 .update-corner-toast:not([hidden]) {
   position: absolute;
@@ -1472,3 +1362,238 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   border-radius: 50%;
   background: var(--accent-grad);
 }
+
+/* ---------- Platform picker page ---------- */
+.screen-platforms {
+  padding: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+.platforms-shell {
+  width: 100%;
+  max-width: 940px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 28px 0;
+}
+/* The header text keeps clear of the top-right icon buttons; the search
+   bar below them spans the full width again. */
+.platforms-head { flex-shrink: 0; }
+.platforms-head .screen-header { margin-bottom: 20px; padding-right: 150px; }
+.platforms-head h2 { margin: 0 0 6px; font-size: 26px; font-weight: 780; letter-spacing: -0.015em; }
+
+.platform-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  transition: border-color .25s, box-shadow .25s;
+}
+.platform-search:focus-within { border-color: var(--accent-2); box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.15); }
+.platform-search > svg { width: 19px; height: 19px; color: var(--text-2); flex-shrink: 0; }
+.platform-search input[type="text"] {
+  border: none; background: transparent; padding: 14px 0; box-shadow: none !important; font-size: 15px;
+}
+.platform-search-clear {
+  width: 30px; height: 30px; border: none; border-radius: 50%;
+  background: var(--surface-strong); color: var(--text-1);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.platform-search-clear svg { width: 14px; height: 14px; }
+.platform-search-clear:hover { color: var(--text-0); background: var(--border); }
+
+.platform-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.platform-chips::-webkit-scrollbar { display: none; }
+.platform-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s, transform .2s var(--ease);
+}
+.platform-chip:hover { color: var(--text-0); border-color: var(--accent-2); transform: translateY(-1px); }
+.platform-chip.active { background: var(--accent-grad); color: #fff; border-color: transparent; }
+
+.platforms-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 10px -12px 0;
+  padding: 12px 12px 40px;
+  /* Content fades out under the header and at the bottom edge. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 36px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 36px), transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.platforms-scroll::-webkit-scrollbar { width: 8px; }
+.platforms-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.platforms-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+
+.platform-section { margin-top: 26px; }
+.platform-section-title {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 12px 2px;
+  font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-2);
+}
+.platform-section-title span {
+  font-size: 11px; letter-spacing: 0; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-strong); color: var(--text-1);
+}
+.platform-section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 12px;
+}
+
+.platform-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 13px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 13%, transparent), transparent 62%),
+    var(--surface);
+  backdrop-filter: blur(14px);
+  color: var(--text-0);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  animation: tile-in .5s var(--ease) both;
+  animation-delay: calc(var(--i) * 22ms);
+  transition: transform .25s var(--ease), border-color .25s, box-shadow .3s var(--ease), background .3s;
+}
+.platform-tile::after {
+  /* Soft brand glow in the corner on hover. */
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -70px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--brand);
+  filter: blur(40px);
+  opacity: 0;
+  transition: opacity .35s var(--ease);
+  pointer-events: none;
+}
+.platform-tile:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  box-shadow: 0 16px 34px -18px color-mix(in srgb, var(--brand) 80%, transparent);
+}
+.platform-tile:hover::after { opacity: .28; }
+.platform-tile:active { transform: translateY(-1px) scale(.98); }
+.platform-tile:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.platform-tile:hover .platform-badge { transform: scale(1.07) rotate(-4deg); }
+
+.platform-tile-text { display: flex; flex-direction: column; min-width: 0; }
+.platform-tile-name { font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.platform-tile-desc { font-size: 12px; color: var(--text-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* "Autre site": the catch-all, wide with a gradient edge. */
+.platform-featured { margin-top: 4px; }
+.platform-tile-featured {
+  width: 100%;
+  padding: 16px 20px;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(120deg, rgba(124, 92, 255, .14), rgba(255, 51, 102, .08)) padding-box,
+    linear-gradient(var(--bg-2), var(--bg-2)) padding-box,
+    linear-gradient(120deg, var(--accent-2), var(--accent), var(--accent-3)) border-box;
+}
+.platform-tile-featured:hover { border-color: transparent; }
+.platform-tile-featured .platform-badge { width: 48px; height: 48px; border-radius: 15px; }
+.platform-tile-featured .platform-tile-name { font-size: 16px; }
+.platform-tile-featured .platform-tile-desc { font-size: 13px; color: var(--text-1); }
+.platform-tile-featured .platform-tile-text { flex: 1; }
+.platform-tile-arrow { width: 20px; height: 20px; color: var(--text-1); flex-shrink: 0; transition: transform .25s var(--ease), color .25s; }
+.platform-tile-featured:hover .platform-tile-arrow { transform: translateX(4px); color: var(--text-0); }
+
+.platforms-empty {
+  margin: 28px 0 0;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+/* Brand badge: logo or monogram on the platform's colors. */
+.platform-badge {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(140deg, var(--brand), var(--brand-2));
+  color: var(--brand-fg, #fff);
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--brand) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22);
+  transition: transform .3s var(--ease);
+}
+.platform-badge svg { width: 54%; height: 54%; }
+.badge-mono {
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-size: 21px;
+}
+.badge-mono[data-len="2"] { font-size: 16px; }
+.badge-mono[data-len="3"] { font-size: 12.5px; letter-spacing: -0.01em; }
+.badge-mono[data-len="4"] { font-size: 11px; letter-spacing: -0.02em; }
+.badge-dark { box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.badge-tiktok svg { filter: drop-shadow(-1.4px -1px 0 #25f4ee) drop-shadow(1.4px 1px 0 #fe2c55); }
+.badge-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
+
+/* URL screen: the chosen platform's badge, click to change. */
+.url-platform-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-left: -8px;
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  transition: transform .2s var(--ease);
+}
+.url-platform-btn:hover { transform: scale(1.08); }
+.platform-badge-sm { width: 34px; height: 34px; border-radius: 10px; }
+.platform-badge-sm .badge-mono { font-size: 17px; }
+.platform-badge-sm .badge-mono[data-len="2"] { font-size: 13px; }
+.platform-badge-sm .badge-mono[data-len="3"] { font-size: 10.5px; }
+.platform-badge-sm .badge-mono[data-len="4"] { font-size: 9px; }
