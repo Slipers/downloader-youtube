@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.44"
+APP_VERSION = "1.50"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,16 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.50",
+        "date": "31 octobre 2026",
+        "bullets": [
+            "Vidéos réservées aux comptes connectés : la connexion YouTube passe désormais uniquement par l'extension navigateur (Paramètres → Extension). L'ancien bouton « Se connecter » des paramètres a été retiré.",
+            "Publication YouTube plus fiable : si la connexion internet coupe pendant l'envoi, l'application attend son retour et reprend là où elle s'était arrêtée.",
+            "Corrigé : les confettis de fin de téléchargement pouvaient faire apparaître des barres de défilement.",
+            "Corrigé : en cas d'échec, l'installateur affiche maintenant le message d'erreur au lieu de rester bloqué.",
+        ],
+    },
     {
         "version": "1.44",
         "date": "31 octobre 2026",

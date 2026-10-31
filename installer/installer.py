@@ -19,7 +19,7 @@ from pathlib import Path
 from tkinter import filedialog
 
 APP_NAME = "Downloader Youtube"
-APP_VERSION = "1.44"
+APP_VERSION = "1.50"
 EXE_NAME = "DownloaderYoutube.exe"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\DownloaderYoutube"
 
@@ -363,7 +363,10 @@ class InstallerApp(tk.Tk):
 
             self.after(300, self._show_done)
         except Exception as exc:
-            self.after(0, lambda: self._show_error(str(exc)))
+            # Bound now: Python unbinds `exc` when the except block ends,
+            # before the lambda runs on the Tk thread.
+            message = str(exc)
+            self.after(0, lambda: self._show_error(message))
 
     def _show_error(self, message: str):
         self._clear()

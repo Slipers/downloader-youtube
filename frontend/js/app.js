@@ -178,15 +178,6 @@ function initSettingsModal() {
     Api.savePreference("sfx_enabled", state.sfxEnabled);
   });
 
-  const loginBtn = $("btn-youtube-login");
-  loginBtn.addEventListener("click", () => {
-    if (state.youtubeSignedIn) {
-      Api.signOutYoutube().then(() => renderYoutubeSession(false, null));
-    } else {
-      Api.openYoutubeLogin();
-    }
-  });
-  Api.on("youtube_session_changed", (p) => renderYoutubeSession(!!p.signed_in, p.source));
 
   $("btn-install-extension").addEventListener("click", () => {
     const browser = (state.extensionBrowsers || []).find((b) => b.id === $("ext-browser-select").value);
@@ -508,20 +499,6 @@ async function openChangelogModal() {
     });
     changelogLoaded = true;
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
-}
-
-function renderYoutubeSession(signedIn, source) {
-  state.youtubeSignedIn = signedIn;
-  $("btn-youtube-login").textContent = signedIn ? "Se déconnecter" : "Se connecter";
-  if (!signedIn) {
-    $("youtube-session-hint").textContent =
-      "Uniquement pour les vidéos réservées aux comptes connectés. Au choix : ici, "
-      + "ou via l'extension navigateur qui transmet la session automatiquement.";
-    return;
-  }
-  const via = source === "extension" ? "via l'extension navigateur" : "via l'application";
-  $("youtube-session-hint").textContent =
-    `Connecté ${via}. Les vidéos réservées aux comptes connectés se téléchargent normalement.`;
 }
 
 function initSmoothWheelScroll(el) {
@@ -2366,9 +2343,6 @@ async function init() {
   const sfxToggle = $("toggle-sfx");
   sfxToggle.classList.toggle("on", state.sfxEnabled);
   sfxToggle.setAttribute("aria-checked", String(state.sfxEnabled));
-  Api.getYoutubeSessionStatus()
-    .then((s) => renderYoutubeSession(!!s.signed_in, s.source))
-    .catch(() => {});
   setSwitch($("toggle-embed-metadata"), settings.embed_metadata !== false);
   $("existing-file-select").value = settings.on_existing_file || "ask";
   renderFilesSetupHint();

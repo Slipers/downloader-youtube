@@ -38,7 +38,6 @@ DEFAULTS = {
     "sfx_enabled": True,
     "always_confirm_video": True,
     "copy_thumbnail": False,
-    "youtube_session_source": None,
     "embed_metadata": True,
     "on_existing_file": "ask",  # "ask" | "rename" | "overwrite"
     # Optional per-video folder layout ("Organisation des fichiers").

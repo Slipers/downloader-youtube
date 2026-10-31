@@ -480,12 +480,19 @@ def upload(path: str, title: str, description: str, privacy: str, publish_at: st
             break
         if resp is not None and resp.status_code not in (308, 408, 429, 500, 502, 503, 504):
             _raise_for(resp)
-        failures += 1
-        if failures > UPLOAD_RETRIES:
-            raise PublishError("La connexion à YouTube a été coupée trop de fois. Réessayez.")
-        if cancel_event.wait(min(2 ** failures, 30)):
-            raise PublishCancelled()
-        state = _received_offset(session_url, size)
+        # Back off, then ask the session how far it got. Still offline at
+        # that point is just one more failure, not the end of the upload.
+        while True:
+            failures += 1
+            if failures > UPLOAD_RETRIES:
+                raise PublishError("La connexion à YouTube a été coupée trop de fois. Réessayez.")
+            if cancel_event.wait(min(2 ** failures, 30)):
+                raise PublishCancelled()
+            try:
+                state = _received_offset(session_url, size)
+                break
+            except requests.RequestException:
+                continue
         if isinstance(state, dict):
             video = state
         else:

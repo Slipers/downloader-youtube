@@ -20,7 +20,6 @@ tries to decrypt another browser's cookie database.
 """
 import os
 import tempfile
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from . import config
@@ -71,39 +70,8 @@ def _format_netscape(cookies: list) -> str:
     return "\n".join(lines) + "\n"
 
 
-def from_simple_cookies(cookies) -> list:
-    """Converts the SimpleCookie objects pywebview hands back from a window
-    into the plain dicts `save` expects, so an in-app YouTube sign-in can feed
-    the same store the browser extension does."""
-    out = []
-    for cookie in cookies or []:
-        for name, morsel in cookie.items():
-            expires = 0
-            raw_expires = morsel.get("expires")
-            if raw_expires:
-                try:
-                    expires = int(parsedate_to_datetime(raw_expires).timestamp())
-                except (TypeError, ValueError):
-                    expires = 0  # treat unparseable as a session cookie
-            out.append({
-                "name": name,
-                "value": morsel.value,
-                "domain": morsel.get("domain") or "",
-                "path": morsel.get("path") or "/",
-                "secure": bool(morsel.get("secure")),
-                "expirationDate": expires,
-            })
-    return out
-
-
-def save(cookies: list, source: str | None = None) -> int:
-    """Writes the cookies atomically. Returns how many were actually stored.
-
-    `source` records which of the two supported paths supplied them -- the
-    in-app YouTube sign-in or the browser extension -- purely so the settings
-    screen can tell the user which one is currently in use. Both are equally
-    supported; neither replaces the other.
-    """
+def save(cookies: list) -> int:
+    """Writes the cookies atomically. Returns how many were actually stored."""
     text = _format_netscape(cookies or [])
     # The header lines are always present, so count real entries instead.
     count = sum(1 for line in text.splitlines() if line and not line.startswith("#"))
@@ -127,18 +95,8 @@ def save(cookies: list, source: str | None = None) -> int:
         os.chmod(config.COOKIES_FILE, 0o600)
     except OSError:
         pass
-    if source:
-        config.save_settings({"youtube_session_source": source})
     return count
 
 
 def path_if_present() -> str | None:
     return str(config.COOKIES_FILE) if config.COOKIES_FILE.exists() else None
-
-
-def clear() -> bool:
-    if not config.COOKIES_FILE.exists():
-        return False
-    config.COOKIES_FILE.unlink(missing_ok=True)
-    config.save_settings({"youtube_session_source": None})
-    return True

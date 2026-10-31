@@ -4,7 +4,6 @@ import json
 import math
 import os
 import re
-import shutil
 import threading
 import time
 import webbrowser
@@ -14,7 +13,7 @@ import requests
 import webview
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
-from . import browsers, clipboard, config, cookie_store, downloader, extension_installer, ffmpeg_manager, js_runtime, updater, window_utils, youtube_publish
+from . import browsers, clipboard, config, downloader, extension_installer, ffmpeg_manager, js_runtime, updater, window_utils, youtube_publish
 
 YOUTUBE_URL_RE = re.compile(r"^https?://(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)/")
 # Per-platform checks live in the frontend catalog; any web page is worth
@@ -148,20 +147,17 @@ class Api:
         if not YOUTUBE_URL_RE.match(url) and ("login" in lowered or "log in" in lowered or "--cookies" in lowered):
             return ("Cette vidéo nécessite d'être connecté au site. Ouvrez-la dans votre navigateur en étant "
                     "connecté, puis réessayez.")
-        # These all mean the same thing to the user: no usable session. Lead
-        # with the in-app sign-in since it needs nothing installed, but name
-        # the extension too -- both fill the same store and either one is
-        # enough on its own.
+        # These all mean the same thing to the user: no usable session, which
+        # only the browser extension can supply.
         if YOUTUBE_URL_RE.match(url) and (
             downloader.is_decrypt_blocked_error(message)
             or downloader.is_bot_check_error(message)
             or downloader.is_cookie_extraction_error(message)
         ):
             return (
-                "Cette vidéo nécessite d'être connecté à YouTube. Deux possibilités, au "
-                "choix : cliquez sur « Se connecter à YouTube » dans les Paramètres (la "
-                "connexion se fait dans l'application, une seule fois), ou installez "
-                "l'extension navigateur, qui transmet votre session automatiquement."
+                "Cette vidéo nécessite d'être connecté à YouTube. Installez l'extension "
+                "navigateur (Paramètres → Extension) et ouvrez YouTube en étant connecté : "
+                "elle transmet votre session automatiquement, puis réessayez."
             )
         return f"Impossible de récupérer la vidéo : {message}"
 
@@ -466,11 +462,6 @@ class Api:
     def launch_browser(self, browser_id: str):
         return browsers.launch_browser(browser_id)
 
-    def on_youtube_session_synced(self):
-        """Called from the link-server thread when the extension pushes cookies,
-        so the settings screen reflects it without needing a reopen."""
-        self._push("youtube_session_changed", {"signed_in": True, "source": "extension"})
-
     def on_extension_linked(self):
         """Called from the link-server thread when the extension pairs."""
         window_utils.focus_window(WINDOW_TITLE)
@@ -480,70 +471,6 @@ class Api:
         """Called from the link-server thread when the extension's download button is clicked."""
         window_utils.focus_window(WINDOW_TITLE)
         self._push("open_download", {"url": url})
-
-    # ---- YouTube sign-in (extension-free) ----------------------------------
-    def get_youtube_session_status(self):
-        return {
-            "signed_in": bool(cookie_store.path_if_present()),
-            "source": config.load_settings().get("youtube_session_source"),
-        }
-
-    def open_youtube_login(self):
-        """Opens YouTube in a window of this app so the user can sign in, then
-        keeps the session.
-
-        The extension can supply cookies too, but requiring it (plus an open
-        YouTube tab) to download a sign-in-gated video made an optional
-        companion feel mandatory. This app *is* a browser, so it can hold its
-        own session -- no extension, no browser cookie extraction, and none of
-        the Chrome/Edge App-Bound Encryption problem that makes reading their
-        cookie database impossible in the first place.
-        """
-        if not self.window:
-            return {"ok": False}
-
-        login_window = webview.create_window(
-            "Connexion YouTube",
-            "https://www.youtube.com/",
-            width=980,
-            height=760,
-        )
-
-        open_flag = {"open": True}
-
-        def on_closed():
-            open_flag["open"] = False
-
-        login_window.events.closed += on_closed
-
-        def harvest_loop():
-            # Polled from this worker thread on purpose. get_cookies() marshals
-            # onto the UI thread and blocks until it answers, so calling it
-            # *from* the UI thread (e.g. in a `closing` handler) deadlocks the
-            # app. Polling also means the session is captured as soon as the
-            # sign-in completes, not only if the window is closed cleanly.
-            last_count = 0
-            while open_flag["open"]:
-                time.sleep(2)
-                try:
-                    found = cookie_store.from_simple_cookies(login_window.get_cookies())
-                except Exception:
-                    break  # window gone
-                if len(found) == last_count:
-                    continue
-                last_count = len(found)
-                try:
-                    stored = cookie_store.save(found, source="app")
-                except OSError:
-                    continue
-                if stored:
-                    self._push("youtube_session_changed", {"signed_in": True, "source": "app"})
-
-        threading.Thread(target=harvest_loop, daemon=True).start()
-        return {"ok": True}
-
-    def sign_out_youtube(self):
-        return {"ok": cookie_store.clear()}
 
     # ---- app / extension updates -------------------------------------------
     def get_app_version(self):

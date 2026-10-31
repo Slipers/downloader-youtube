@@ -72,12 +72,10 @@ class LinkRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(401, {"ok": False})
                 return
             try:
-                stored = cookie_store.save(data.get("cookies") or [], source="extension")
+                stored = cookie_store.save(data.get("cookies") or [])
             except OSError:
                 self._send_json(500, {"ok": False})
                 return
-            if stored and self.server.api:
-                self.server.api.on_youtube_session_synced()
             self._send_json(200, {"ok": True, "stored": stored})
             return
 
