@@ -132,6 +132,8 @@ class Api:
     def _friendly_error(self, exc: Exception, url: str = "") -> str:
         message = str(exc)
         lowered = message.lower()
+        if isinstance(exc, downloader.QualityCheckFailed):
+            return message
         if isinstance(exc, downloader.NoVideoFound) or "unsupported url" in lowered:
             return "Aucune vidéo téléchargeable n'a été trouvée sur cette page. Vérifiez qu'il s'agit bien du lien d'une vidéo."
         if "drm" in lowered:
@@ -306,6 +308,9 @@ class Api:
                 skip_video=not setup.get("video", True),
             )
         try:
+            # The token server may have died since the video was fetched;
+            # without it mweb drops to 360p. A single /ping when it's up.
+            js_runtime.ensure_server_running()
             ffmpeg_location = ffmpeg_manager.find_ffmpeg()
             opts = downloader.build_ydl_opts(options, ffmpeg_location)
 

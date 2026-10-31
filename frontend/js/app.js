@@ -976,12 +976,16 @@ function pickDefaultQuality() {
     const h = state.qualityTiers[remembered].height;
     if (remembered === "auto" || h <= maxH) return remembered;
   }
+  // Otherwise the best the video really has, up to 1080p. The tiers have
+  // gaps (no 360p): a 360p-max video must not fall back to the 144p tier,
+  // "Auto" fetches exactly its best instead.
+  const cap = Math.min(maxH, 1080);
   let best = "auto";
   for (const q of QUALITY_ORDER) {
     if (q === "auto") continue;
-    const h = state.qualityTiers[q].height;
-    if (h <= maxH && h <= 1080) best = q;
+    if (state.qualityTiers[q].height <= cap) best = q;
   }
+  if (best !== "auto" && state.qualityTiers[best].height < cap && maxH <= 1080) return "auto";
   return best;
 }
 
@@ -1202,7 +1206,11 @@ function populateOptionsScreen() {
   state.exportType = state.viaExtension ? "video_audio" : (state.settings.last_export_type || "video_audio");
   state.outputFormat = state.settings.last_output_format || "mp4";
   const rememberedFps = state.settings.last_fps;
-  if (rememberedFps && rememberedFps !== "auto" && !isNaN(Number(rememberedFps))) {
+  const maxFps = state.videoInfo?.max_fps;
+  // A remembered rate the video doesn't reach (60 fps on a 25 fps video)
+  // falls back to Auto, i.e. the best the video has.
+  const fpsReachable = !maxFps || Number(rememberedFps) <= maxFps + 1;
+  if (rememberedFps && rememberedFps !== "auto" && !isNaN(Number(rememberedFps)) && fpsReachable) {
     state.fps = Number(rememberedFps);
     state.fpsIsManual = !state.fpsChoices.includes(state.fps);
   } else {

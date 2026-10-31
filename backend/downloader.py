@@ -3,6 +3,7 @@ import base64
 import glob
 import os
 import re
+import subprocess
 import time
 from collections import deque
 from pathlib import Path
@@ -50,8 +51,11 @@ AUDIO_FORMATS = ["mp3", "m4a", "wav", "opus"]
 
 # Player clients that avoid YouTube's bot-check for most public videos without any cookies.
 # mweb goes first: with a PO token (see js_runtime) it exposes the full ladder up to
-# 4K, while web_safari stays as the fallback that still reaches 1080p without one.
-DEFAULT_PLAYER_CLIENTS = ["mweb", "web_safari", "tv"]
+# 4K -- but without one (token server not up, or crashed) it gets 360p at most.
+# "default" is yt-dlp's own current pick (visionos as of Oct 2026), measured to
+# list *and serve* the full ladder with no token at all, so a dead token server
+# no longer means a 144p download. web_safari and tv returned nothing by then.
+DEFAULT_PLAYER_CLIENTS = ["mweb", "default"]
 
 # Browsers to try automatically (in order) when a video does require real authentication.
 # Chrome is tried last: its App-Bound Encryption (since Chrome 127) frequently blocks
@@ -200,6 +204,7 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
     order += [("browser", b) for b in AUTO_COOKIE_ORDER if b != hint]
 
     last_exc = None
+    degraded = None  # the real reason, when sources merely came back short
     rejected = None  # a result that worked but came back degraded
     for kind, value in order:
         if kind == "file":
@@ -216,6 +221,8 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
             raise
         except Exception as exc:
             last_exc = exc
+            if isinstance(exc, DegradedSelection):
+                degraded = exc
             retryable = isinstance(exc, DegradedSelection) or needs_signed_in_retry(str(exc))
             if kind == "none" and not retryable:
                 raise
@@ -233,7 +240,10 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
 
     if rejected is not None:
         return rejected
-    raise last_exc
+    # A browser whose cookies can't be read (the usual end of the cascade)
+    # must not mask a selection that was only too low: the caller retries
+    # those and finally settles, instead of failing on a cookie error.
+    raise degraded or last_exc
 
 
 def _base_opts() -> dict:
@@ -268,6 +278,34 @@ def _pick_storyboard(formats: list) -> dict | None:
 
 class NoVideoFound(Exception):
     """The page was read fine but holds nothing downloadable."""
+
+
+class QualityCheckFailed(Exception):
+    """The finished file is below the quality that was targeted. Its message
+    is shown to the user as is."""
+
+
+# The target comes from yt-dlp's real pixel heights (a letterboxed "1080p"
+# is 804 on both sides); the margin only absorbs small encoder differences.
+_QUALITY_TOLERANCE = 0.9
+
+
+def _probe_height(path: str | None, ffmpeg_location: str | None) -> int | None:
+    """The height actually encoded in the file, read by ffprobe -- not what
+    yt-dlp announced. None when it can't be measured (no ffprobe, no video)."""
+    if not path or not os.path.isfile(path):
+        return None
+    ffprobe = str(Path(ffmpeg_location, "ffprobe.exe")) if ffmpeg_location else "ffprobe"
+    try:
+        out = subprocess.run(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=height", "-of", "csv=p=0", path],
+            capture_output=True, text=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        ).stdout.strip()
+        return int(out.split(",")[0]) if out else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
 
 
 def _first_entry(info: dict) -> dict:
@@ -624,6 +662,16 @@ def download(
         final_path = None
 
     delivered = _selected_video_height(info)
+    if expected_height and info.get("extractor_key") == "Youtube":
+        measured = _probe_height(final_path, ydl_opts.get("ffmpeg_location"))
+        if measured:
+            delivered = measured
+            if measured < expected_height * _QUALITY_TOLERANCE:
+                raise QualityCheckFailed(
+                    f"La vidéo n'a été obtenue qu'en {measured}p au lieu de {expected_height}p : "
+                    "YouTube a limité la qualité pendant le téléchargement. Le fichier a été gardé, "
+                    "mais réessayez dans un moment pour l'avoir en vraie qualité."
+                )
     return {
         "title": info.get("title"),
         "description": info.get("description") or "",
