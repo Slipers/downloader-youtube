@@ -139,6 +139,20 @@ def _server_ready(timeout: float = 1.5) -> bool:
         return False
 
 
+def invalidate_caches() -> bool:
+    """Drops the token server's cached session and tokens, so the next
+    fetch mints fresh ones. False when the server isn't running."""
+    ok = False
+    for endpoint in ("invalidate_caches", "invalidate_it"):
+        request = urllib.request.Request(f"http://127.0.0.1:{POT_SERVER_PORT}/{endpoint}", data=b"", method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=5):
+                ok = True
+        except Exception:
+            pass
+    return ok
+
+
 def ensure_server_running():
     """Starts the persistent PO token server if it isn't already running.
     Idempotent and cheap to call before every video fetch as a safety net --

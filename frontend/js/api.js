@@ -66,6 +66,10 @@ const Api = {
     await apiReady;
     return window.pywebview.api.get_ffmpeg_status();
   },
+  async clearCache() {
+    await apiReady;
+    return window.pywebview.api.clear_cache();
+  },
   async uninstallFfmpeg() {
     await apiReady;
     return window.pywebview.api.uninstall_ffmpeg();

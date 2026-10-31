@@ -146,6 +146,13 @@ body {
   transition: background 1.1s var(--ease);
 }
 
+/* Cursor follow (--px/--py in -1..1, eased in JS): `translate` is separate
+   from `transform`, so it adds to the float animations instead of fighting
+   them. Different depths per blob give a little parallax. */
+.blob-a { translate: calc(var(--px, 0) * 7vw) calc(var(--py, 0) * 7vh); }
+.blob-b { translate: calc(var(--px, 0) * 4vw) calc(var(--py, 0) * 4vh); }
+.blob-c { translate: calc(var(--px, 0) * 10vw) calc(var(--py, 0) * 10vh); }
+
 .blob-a { width: 46vw; height: 46vw; background: var(--tint-a); top: -12%; left: -8%; animation: float-a 14s ease-in-out infinite, hue-drift 17s ease-in-out infinite; opacity: calc(var(--blob-op) + var(--tint-op-boost)); transition: background 1.1s var(--ease), opacity 1.1s var(--ease); }
 .blob-b { width: 38vw; height: 38vw; background: var(--tint-b); bottom: -14%; right: -6%; animation: float-b 16s ease-in-out infinite, hue-drift 21s ease-in-out infinite; }
 .blob-c { width: 28vw; height: 28vw; background: var(--tint-c); top: 40%; left: 55%; animation: float-c 18s ease-in-out infinite, hue-drift 25s ease-in-out infinite; }
@@ -1244,7 +1251,7 @@ input[type="text"][readonly] { cursor: default; color: var(--text-1); }
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
-  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 .changelog-list::-webkit-scrollbar { width: 8px; }
 .changelog-list::-webkit-scrollbar-track { background: transparent; }

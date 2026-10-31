@@ -11,6 +11,7 @@ from pathlib import Path
 
 import requests
 import webview
+import yt_dlp
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
 from . import browsers, clipboard, config, downloader, extension_installer, ffmpeg_manager, js_runtime, updater, window_utils, youtube_publish
@@ -350,6 +351,15 @@ class Api:
             self._push("download_cancelled", {})
         except Exception as exc:
             self._push("download_error", {"error": self._friendly_error(exc, url)})
+
+    def clear_cache(self):
+        """Settings > "Vider le cache": stale player code or tokens can make
+        YouTube serve a stripped quality list, and clearing both is the
+        user-facing fix. Settings, sessions and downloads are untouched."""
+        with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
+            ydl.cache.remove()
+        js_runtime.invalidate_caches()
+        return {"ok": True}
 
     # ---- publishing to YouTube ----------------------------------------------
     def get_publish_status(self):

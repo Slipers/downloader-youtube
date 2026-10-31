@@ -133,9 +133,16 @@ _MUXED_FALLBACK_ITAGS = {"18", "22"}
 _SUSPICIOUSLY_LOW_HEIGHT = 480
 
 
+def _res(f: dict) -> int:
+    """A format's quality the way YouTube labels it: its short side, so a
+    1080x1920 Short is "1080p", not 1920p. Same rule as yt-dlp's `res`."""
+    width, height = f.get("width"), f.get("height")
+    return min(width, height) if width and height else (height or 0)
+
+
 def _max_video_height(info: dict) -> int:
     return max(
-        (f.get("height") or 0 for f in (info.get("formats") or []) if f.get("vcodec") not in (None, "none")),
+        (_res(f) for f in (info.get("formats") or []) if f.get("vcodec") not in (None, "none")),
         default=0,
     )
 
@@ -171,8 +178,8 @@ class DegradedSelection(Exception):
 
 def _selected_video_height(info: dict) -> int | None:
     for f in info.get("requested_formats") or [info]:
-        if f.get("vcodec") not in (None, "none") and f.get("height"):
-            return f["height"]
+        if f.get("vcodec") not in (None, "none") and _res(f):
+            return _res(f)
     return None
 
 
@@ -291,19 +298,20 @@ _QUALITY_TOLERANCE = 0.9
 
 
 def _probe_height(path: str | None, ffmpeg_location: str | None) -> int | None:
-    """The height actually encoded in the file, read by ffprobe -- not what
-    yt-dlp announced. None when it can't be measured (no ffprobe, no video)."""
+    """The quality actually encoded in the file (its short side, see _res),
+    read by ffprobe -- not what yt-dlp announced. None when it can't be
+    measured (no ffprobe, no video)."""
     if not path or not os.path.isfile(path):
         return None
     ffprobe = str(Path(ffmpeg_location, "ffprobe.exe")) if ffmpeg_location else "ffprobe"
     try:
         out = subprocess.run(
             [ffprobe, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=height", "-of", "csv=p=0", path],
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", path],
             capture_output=True, text=True, timeout=30,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         ).stdout.strip()
-        return int(out.split(",")[0]) if out else None
+        return min(int(v) for v in out.splitlines()[0].split(",")[:2]) if out else None
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
 
@@ -345,9 +353,9 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
     formats = info.get("formats") or []
     video_formats = [f for f in formats if f.get("vcodec") not in (None, "none")]
 
-    heights = {f.get("height") for f in video_formats if f.get("height")}
-    if not heights and info.get("height"):
-        heights = {info["height"]}
+    heights = {_res(f) for f in video_formats if _res(f)}
+    if not heights and _res(info):
+        heights = {_res(info)}
 
     fps_values = {round(f["fps"]) for f in video_formats if f.get("fps")}
 
@@ -362,7 +370,7 @@ def get_video_info(url: str, cookies_file: str | None = None) -> dict:
         candidates = [
             (f.get("filesize") or f.get("filesize_approx") or 0)
             for f in video_formats
-            if f.get("height") == h
+            if _res(f) == h
         ]
         if candidates:
             size_by_height[h] = max(candidates) + best_audio_size
@@ -471,7 +479,6 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     container = output_format if output_format in VIDEO_CONTAINERS else "mp4"
     tier = QUALITY_TIERS[quality]
     height = tier["height"]
-    height_filter = "" if height is None else f"[height<={height}]"
     reencode = _needs_reencode(bitrate, tier["recommended_kbps"])
 
     # MP4 is the format people pick specifically to open elsewhere (video
@@ -482,24 +489,22 @@ def build_ydl_opts(options: dict, ffmpeg_location: str | None) -> dict:
     # format string, and since YouTube offers no H.264 above 1080p, asking for
     # 2K or 4K in MP4 silently delivered 1080p. The quality the user picked
     # wins; codec compatibility only decides between equals.
+    #
+    # The tier itself is a sort, not a filter: "res:1080" takes the best
+    # format whose *short side* is at most 1080 (else the closest above).
+    # A height<=1080 filter read portrait videos by their long side, so a
+    # 1080x1920 Short asked in 2K came out 720x1280, and on some sites it
+    # could exclude every format.
+    opts["format_sort"] = [f"res:{height}" if height else "res", "fps"]
     if container == "mp4":
-        opts["format_sort"] = ["res", "fps", "vcodec:h264", "acodec:aac"]
+        opts["format_sort"] += ["vcodec:h264", "acodec:aac"]
 
-    # A trailing unfiltered "best" catches sites like TikTok, where a portrait
-    # video's *width* is its short side -- yt-dlp still reports "height" as
-    # the long side, so a height<=X tier filter can exclude every available
-    # format and fail outright instead of just settling for what exists.
     if export_type == "video_only":
-        opts["format"] = (
-            f"bestvideo{height_filter}{fps_filter}/best{height_filter}{fps_filter}/best"
-        )
+        opts["format"] = f"bestvideo{fps_filter}/best{fps_filter}/best"
         if reencode or output_format:
             opts["postprocessors"] = [{"key": "FFmpegVideoConvertor", "preferedformat": container}]
     else:  # video_audio
-        opts["format"] = (
-            f"bestvideo{height_filter}{fps_filter}+bestaudio/"
-            f"best{height_filter}{fps_filter}/best"
-        )
+        opts["format"] = f"bestvideo{fps_filter}+bestaudio/best{fps_filter}/best"
         opts["merge_output_format"] = container
 
     if reencode:

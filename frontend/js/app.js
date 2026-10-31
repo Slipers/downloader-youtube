@@ -227,6 +227,18 @@ function initSettingsModal() {
     btn.disabled = false;
   });
 
+  $("btn-clear-cache").addEventListener("click", async () => {
+    const btn = $("btn-clear-cache");
+    btn.disabled = true;
+    try {
+      await Api.clearCache();
+      $("cache-status-text").textContent = "Cache vidé. Relancez le téléchargement.";
+    } catch (err) {
+      $("cache-status-text").textContent = "Le cache n'a pas pu être vidé.";
+    }
+    btn.disabled = false;
+  });
+
   $("settings-toggle").addEventListener("click", refreshExtensionSettings);
   $("btn-update-extension").addEventListener("click", async () => {
     const btn = $("btn-update-extension");
@@ -501,36 +513,10 @@ async function openChangelogModal() {
   } catch (err) { /* leave the modal open with whatever loaded, if anything */ }
 }
 
-function initSmoothWheelScroll(el) {
-  // Chromium's native wheel scroll moves in fixed per-notch jumps, which reads
-  // as choppy on a short list like this one -- easing toward an accumulated
-  // target gives it real momentum instead.
-  let targetTop = el.scrollTop;
-  let raf = null;
-  const step = () => {
-    const current = el.scrollTop;
-    const diff = targetTop - current;
-    if (Math.abs(diff) < 0.5) {
-      el.scrollTop = targetTop;
-      raf = null;
-      return;
-    }
-    el.scrollTop = current + diff * 0.22;
-    raf = requestAnimationFrame(step);
-  };
-  el.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    const max = el.scrollHeight - el.clientHeight;
-    targetTop = Math.max(0, Math.min(max, targetTop + e.deltaY));
-    if (!raf) raf = requestAnimationFrame(step);
-  }, { passive: false });
-}
-
 function initChangelogModal() {
   $("btn-open-changelog").addEventListener("click", openChangelogModal);
   $("update-changelog-btn").addEventListener("click", openChangelogModal);
   $("changelog-close").addEventListener("click", () => closeModal("modal-changelog"));
-  initSmoothWheelScroll($("changelog-list"));
 }
 
 async function checkForUpdate() {
@@ -758,7 +744,11 @@ function initPlatformsScreen() {
     const tile = e.target.closest(".platform-tile");
     if (tile) setTint(PLATFORM_BY_ID[tile.dataset.platform]);
   });
-  body.addEventListener("mouseleave", () => setTint(null));
+  // Only while still choosing: a click switches screens, which also "leaves"
+  // the grid, and must keep the chosen platform's colors.
+  body.addEventListener("mouseleave", () => {
+    if ($("screen-platforms").classList.contains("active")) setTint(null);
+  });
   $("url-platform-btn").addEventListener("click", openPlatformsScreen);
 }
 
@@ -2305,6 +2295,26 @@ function hideSplashScreen() {
 }
 
 /* ---------- init ---------- */
+// The background blobs drift toward the cursor, eased every frame so they
+// glide rather than snap; the loop stops once they've caught up.
+function initBlobFollow() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const blobs = document.querySelector(".bg-blobs");
+  let tx = 0, ty = 0, x = 0, y = 0, raf = null;
+  const step = () => {
+    x += (tx - x) * 0.06;
+    y += (ty - y) * 0.06;
+    blobs.style.setProperty("--px", x.toFixed(4));
+    blobs.style.setProperty("--py", y.toFixed(4));
+    raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.001 ? requestAnimationFrame(step) : null;
+  };
+  window.addEventListener("pointermove", (e) => {
+    tx = (e.clientX / window.innerWidth) * 2 - 1;
+    ty = (e.clientY / window.innerHeight) * 2 - 1;
+    if (!raf) raf = requestAnimationFrame(step);
+  });
+}
+
 async function init() {
   // The window itself is already visible with the splash on top by the time
   // this runs -- the bar below is driven by real init milestones completing
@@ -2323,6 +2333,7 @@ async function init() {
   initWelcomeModal();
   initStopButton();
   initPublishModal();
+  initBlobFollow();
   setSplashProgress(15);
 
   const settings = await Api.getSettings();

@@ -94,6 +94,11 @@ const PLATFORMS = [
   { id: "archive", name: "Internet Archive", cat: "video", desc: "Archive.org", color: "#3d3d3d", color2: "#1f1f1f", mono: "IA", cls: "badge-dark",
     domains: ["archive\\.org"], placeholder: "https://archive.org/details/..." },
 
+  // Series and films on TF1+ are DRM-protected (refused with a clear message);
+  // news, magazines and clips download fine.
+  { id: "tf1", name: "TF1+", cat: "tv", desc: "JT, magazines & extraits (MYTF1)", color: "#1f4fff", color2: "#e4002b", mono: "TF1",
+    domains: ["tf1\\.fr", "tf1info\\.fr"], placeholder: "https://www.tf1.fr/tf1/.../videos/....html",
+    subtitle: "Collez le lien d'une vidéo TF1+ (les séries et films protégés ne sont pas téléchargeables)." },
   { id: "francetv", name: "france.tv", cat: "tv", desc: "Replay France TV", color: "#2c3cff", color2: "#1a1f8f", mono: "f.tv",
     domains: ["france\\.tv"], placeholder: "https://www.france.tv/..." },
   { id: "franceinfo", name: "franceinfo", cat: "tv", desc: "JT & reportages", color: "#ffd300", color2: "#f2b600", fg: "#1a1a1a", mono: "fi",

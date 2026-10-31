@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.51"
+APP_VERSION = "1.52"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,17 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.52",
+        "date": "31 octobre 2026",
+        "bullets": [
+            "Nouveau : TF1+ (MYTF1) dans les plateformes, pour les JT, magazines et extraits. Les séries et films de TF1+ sont protégés (DRM) et ne peuvent pas être téléchargés.",
+            "Nouveau : bouton « Vider le cache » dans les paramètres (Système), à utiliser si des vidéos sortent en mauvaise qualité.",
+            "Corrigé : la qualité des vidéos verticales (Shorts) se mesure désormais comme sur YouTube. Le menu n'annonce plus de 1080p ou de 2K qui n'existent pas, et la qualité choisie est bien respectée.",
+            "Le fond garde les couleurs de la plateforme choisie, et les bulles suivent maintenant le curseur en douceur.",
+            "Corrigé : le défilement de la liste des nouveautés.",
+        ],
+    },
     {
         "version": "1.51",
         "date": "31 octobre 2026",
