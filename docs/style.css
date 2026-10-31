@@ -1,0 +1,111 @@
+:root {
+  --bg: #0b0c10;
+  --bg-2: #14161d;
+  --card: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.10);
+  --text: #f5f6fa;
+  --text-1: #b7bacb;
+  --text-2: #7d8195;
+  --accent: #ff3366;
+  --accent-2: #7c5cff;
+  --accent-3: #22d3c5;
+  --grad: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f2fb;
+    --bg-2: #ffffff;
+    --card: rgba(255, 255, 255, 0.75);
+    --border: rgba(20, 20, 40, 0.09);
+    --text: #1b1c26;
+    --text-1: #4d5165;
+    --text-2: #8a8ea3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: "Segoe UI Variable", "Segoe UI", -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+body::before, body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .35;
+  pointer-events: none;
+}
+body::before { width: 46vw; height: 46vw; top: -14vw; left: -10vw; background: var(--accent); }
+body::after { width: 40vw; height: 40vw; bottom: -16vw; right: -8vw; background: var(--accent-2); }
+
+a { color: var(--accent-2); }
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 22px 0;
+}
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 17px; color: var(--text); text-decoration: none; }
+.brand img { width: 36px; height: 36px; border-radius: 10px; }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+nav .links { display: flex; gap: 18px; flex-wrap: wrap; }
+nav .links a { color: var(--text-1); text-decoration: none; font-size: 14px; font-weight: 600; }
+nav .links a:hover, nav .links a.active { color: var(--text); }
+
+.hero { text-align: center; padding: 70px 0 50px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .2em; font-size: 12px; font-weight: 700; color: var(--text-2); margin: 0 0 14px; }
+.hero h1 { font-size: clamp(36px, 7vw, 62px); line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 18px; }
+.hero h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { color: var(--text-1); font-size: 18px; max-width: 560px; margin: 0 auto 34px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 32px; border-radius: 999px;
+  background: var(--grad); color: #fff; font-weight: 700; text-decoration: none;
+  box-shadow: 0 16px 36px -14px rgba(255, 51, 102, .6);
+  transition: transform .2s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn svg { width: 18px; height: 18px; }
+.hint { display: block; margin-top: 14px; font-size: 13px; color: var(--text-2); }
+
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; padding: 20px 0 60px; }
+.feature {
+  padding: 22px; border-radius: 20px;
+  background: var(--card); border: 1px solid var(--border); backdrop-filter: blur(16px);
+}
+.feature h3 { margin: 0 0 6px; font-size: 16px; }
+.feature p { margin: 0; color: var(--text-1); font-size: 14px; }
+.feature .ico {
+  width: 40px; height: 40px; border-radius: 12px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center; color: #fff; background: var(--grad);
+}
+.feature .ico svg { width: 20px; height: 20px; }
+
+.doc {
+  margin: 30px 0 60px;
+  padding: clamp(24px, 5vw, 48px);
+  border-radius: 26px;
+  background: var(--card); border: 1px solid var(--border); backdrop-filter: blur(18px);
+}
+.doc h1 { margin: 0 0 6px; font-size: clamp(28px, 5vw, 38px); letter-spacing: -0.015em; }
+.doc .updated { margin: 0 0 30px; color: var(--text-2); font-size: 14px; }
+.doc h2 { margin: 34px 0 10px; font-size: 19px; }
+.doc p, .doc li { color: var(--text-1); font-size: 15px; }
+.doc ul { padding-left: 22px; }
+.doc li { margin: 6px 0; }
+.doc strong { color: var(--text); }
+.doc code { font-size: 13px; padding: 2px 6px; border-radius: 6px; background: var(--border); }
+.callout {
+  padding: 16px 18px; border-radius: 16px; margin: 18px 0;
+  border: 1px solid rgba(34, 211, 197, .35); background: rgba(34, 211, 197, .08);
+}
+.callout p { margin: 0; color: var(--text); }
+
+footer { padding: 30px 0 50px; text-align: center; color: var(--text-2); font-size: 13px; }
+footer a { color: var(--text-1); }

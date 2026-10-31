@@ -1,11 +1,22 @@
 """Sends the mandatory post-update rating/feedback to a Discord webhook."""
 import json
+import sys
 import urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
 
 from . import updater
 
-WEBHOOK_URL = "https://discord.com/api/webhooks/1536814364982509679/cydh55JRD-M59ACJTqskAEtVhzcfIJHgIZdbl7Vl1wP8dcbq6halas8343eWajIu5uVS"
+# Kept out of the (public) repository: backend/keys is never synced to
+# GitHub, and the file is bundled into the build next to the other keys.
+_WEBHOOK_FILE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "keys" / "feedback_webhook.txt"
+
+
+def _webhook_url() -> str | None:
+    try:
+        return _WEBHOOK_FILE.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
 
 
 def _stars_display(stars: float) -> str:
@@ -27,9 +38,12 @@ def send_rating(stars: float, comment: str) -> bool:
         "footer": {"text": "Downloader Youtube — avis utilisateur"},
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    url = _webhook_url()
+    if not url:
+        return False
     payload = json.dumps({"embeds": [embed]}).encode("utf-8")
     req = urllib.request.Request(
-        WEBHOOK_URL,
+        url,
         data=payload,
         headers={"Content-Type": "application/json", "User-Agent": "DownloaderYoutube-Feedback"},
         method="POST",

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confidentialité · Downloader Youtube</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="./"><img src="icon.png" alt="">Downloader <span>Youtube</span></a>
+    <div class="links">
+      <a href="./">Accueil</a>
+      <a href="privacy.html" class="active">Confidentialité</a>
+      <a href="terms.html">Conditions</a>
+    </div>
+  </nav>
+
+  <article class="doc">
+    <h1>Politique de confidentialité</h1>
+    <p class="updated">Dernière mise à jour : 31 octobre 2026</p>
+
+    <div class="callout"><p><strong>En bref :</strong> Downloader Youtube fonctionne entièrement sur votre ordinateur. Nous n'avons aucun serveur : vos vidéos, votre compte Google et vos données ne nous sont jamais transmis. Seul un avis sur l'application nous parvient, et uniquement si vous choisissez d'en laisser un.</p></div>
+
+    <h2>1. Qui sommes-nous</h2>
+    <p>Downloader Youtube est une application Windows gratuite et indépendante, non affiliée à YouTube ni à Google. Contact : <a href="mailto:slipamplemousse@gmail.com">slipamplemousse@gmail.com</a>.</p>
+
+    <h2>2. Données traitées sur votre ordinateur</h2>
+    <p>Les éléments suivants restent sur votre PC, dans le dossier <code>%LOCALAPPDATA%\DownloaderYoutubeer</code> et dans les dossiers de téléchargement que vous choisissez :</p>
+    <ul>
+      <li>vos préférences (thème, qualité, dossier de destination…) ;</li>
+      <li>les vidéos, miniatures et fichiers texte que vous téléchargez ;</li>
+      <li>si vous vous connectez à YouTube pour télécharger certaines vidéos, les cookies de session correspondants ;</li>
+      <li>si vous connectez une chaîne pour la publication, l'autorisation d'accès décrite ci-dessous.</li>
+    </ul>
+    <p>Aucun de ces éléments n'est envoyé au développeur.</p>
+
+    <h2>3. Publication sur YouTube (API Google)</h2>
+    <p>La fonction « Publier sur YouTube » utilise les services d'API YouTube. Quand vous connectez une chaîne, l'application demande, via la page de connexion officielle de Google, les autorisations suivantes :</p>
+    <ul>
+      <li><strong>Mettre en ligne des vidéos sur votre chaîne</strong> (<code>youtube.upload</code>) : pour envoyer la vidéo que vous avez choisie, avec le titre, la description, la miniature, la visibilité et la date de programmation que vous avez saisis ;</li>
+      <li><strong>Consulter votre compte YouTube</strong> (<code>youtube.readonly</code>) : uniquement pour afficher le nom et l'image de la chaîne connectée dans l'application.</li>
+    </ul>
+    <p>Ces autorisations ne sont utilisées <strong>que lorsque vous lancez vous-même une publication</strong>. Les données (fichier vidéo, titre, description, miniature) partent directement de votre ordinateur vers les serveurs de Google, sans passer par un serveur tiers.</p>
+    <p>L'application ne voit jamais votre mot de passe Google. Elle conserve uniquement un jeton d'accès, <strong>chiffré sur votre ordinateur</strong> avec la protection de données de Windows (DPAPI), lisible seulement par votre session Windows. Ce jeton n'est jamais transmis au développeur ni à quiconque d'autre que Google.</p>
+    <p>L'utilisation et le transfert des informations reçues des API Google respectent le <a href="https://developers.google.com/terms/api-services-user-data-policy">règlement sur les données utilisateur des services d'API Google</a>, y compris les exigences d'utilisation limitée (« Limited Use »). Ces informations ne sont ni vendues, ni partagées, ni utilisées à des fins publicitaires.</p>
+    <p>En utilisant la publication, vous acceptez les <a href="https://www.youtube.com/t/terms">Conditions d'utilisation de YouTube</a>. Les données traitées par Google le sont selon les <a href="https://policies.google.com/privacy">Règles de confidentialité de Google</a>.</p>
+
+    <h2>4. Retirer l'accès</h2>
+    <ul>
+      <li>Dans l'application : bouton <strong>« Déconnecter »</strong> de la fenêtre de publication. L'accès est révoqué chez Google et le jeton est supprimé de votre ordinateur.</li>
+      <li>À tout moment depuis votre compte Google : <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>.</li>
+    </ul>
+
+    <h2>5. Ce qui sort de votre ordinateur</h2>
+    <ul>
+      <li><strong>Téléchargements :</strong> l'application contacte les sites dont vous collez les liens, comme le ferait votre navigateur.</li>
+      <li><strong>Mises à jour :</strong> l'application consulte GitHub pour savoir si une nouvelle version existe.</li>
+      <li><strong>Avis facultatif :</strong> si vous choisissez de noter l'application, la note, votre commentaire et le numéro de version nous sont envoyés. Rien d'autre (ni nom, ni e-mail, ni adresse).</li>
+    </ul>
+    <p>L'application ne contient ni publicité, ni traceur, ni outil de mesure d'audience.</p>
+
+    <h2>6. Conservation et suppression</h2>
+    <p>Les données restent sur votre ordinateur tant que vous ne les supprimez pas. Pour tout effacer : déconnectez votre chaîne, désinstallez l'application et supprimez le dossier <code>%LOCALAPPDATA%\DownloaderYoutubeer</code>.</p>
+
+    <h2>7. Modifications</h2>
+    <p>Cette page peut évoluer avec l'application ; la date en haut indique la dernière mise à jour. Pour toute question : <a href="mailto:slipamplemousse@gmail.com">slipamplemousse@gmail.com</a>.</p>
+  </article>
+</div>
+
+<footer>
+  <div class="wrap">
+    Downloader Youtube · <a href="./">Accueil</a> · <a href="terms.html">Conditions d'utilisation</a><br>
+    Application indépendante, non affiliée à YouTube ni à Google.
+  </div>
+</footer>
+</body>
+</html>
