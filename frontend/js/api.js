@@ -74,6 +74,38 @@ const Api = {
     await apiReady;
     return window.pywebview.api.check_output_exists(title, options);
   },
+  async getPublishStatus() {
+    await apiReady;
+    return window.pywebview.api.get_publish_status();
+  },
+  async connectPublishChannel() {
+    await apiReady;
+    return window.pywebview.api.connect_publish_channel();
+  },
+  async cancelPublishConnect() {
+    await apiReady;
+    return window.pywebview.api.cancel_publish_connect();
+  },
+  async disconnectPublishChannel() {
+    await apiReady;
+    return window.pywebview.api.disconnect_publish_channel();
+  },
+  async pickPublishThumbnail() {
+    await apiReady;
+    return window.pywebview.api.pick_publish_thumbnail();
+  },
+  async startPublish(payload) {
+    await apiReady;
+    return window.pywebview.api.start_publish(payload);
+  },
+  async openYoutubeLink(url) {
+    await apiReady;
+    return window.pywebview.api.open_youtube_link(url);
+  },
+  async cancelPublish() {
+    await apiReady;
+    return window.pywebview.api.cancel_publish();
+  },
   async startDownload(url, options) {
     await apiReady;
     return window.pywebview.api.start_download(url, options);
@@ -125,10 +157,6 @@ const Api = {
   async getChangelog() {
     await apiReady;
     return window.pywebview.api.get_changelog();
-  },
-  async submitRating(stars, comment) {
-    await apiReady;
-    return window.pywebview.api.submit_rating(stars, comment);
   },
   async checkForUpdate() {
     await apiReady;

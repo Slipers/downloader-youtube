@@ -23,7 +23,6 @@
     </button>
     <button id="settings-toggle" class="icon-btn" aria-label="Paramètres" title="Paramètres">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-      <span id="settings-badge" class="icon-btn-badge" hidden></span>
     </button>
     <button id="theme-toggle" class="icon-btn" aria-label="Basculer le thème jour/nuit" title="Basculer le thème">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>
@@ -450,17 +449,134 @@
       </div>
 
       <div class="settings-footer">
-        <button id="btn-rate-app" class="rate-app-btn" type="button">
-          <span class="rate-app-btn-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <span id="rate-app-badge" class="icon-btn-badge" hidden></span>
-          </span>
-          <span class="rate-app-btn-text">
-            <span class="rate-app-btn-title">Donner mon avis</span>
-            <span class="hint-text">Notez l'application.</span>
-          </span>
-        </button>
         <button id="settings-close" class="btn-secondary">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : publier sur YouTube -->
+  <div id="modal-publish" class="modal-overlay">
+    <div class="modal modal-publish-card">
+      <div class="publish-header">
+        <span class="publish-yt-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg></span>
+        <div class="publish-header-text">
+          <h3>Publier sur YouTube</h3>
+          <p class="publish-file" id="publish-file"></p>
+        </div>
+        <div id="publish-channel" class="publish-channel" hidden>
+          <img id="publish-channel-avatar" alt="" referrerpolicy="no-referrer">
+          <div class="publish-channel-text">
+            <span id="publish-channel-name" class="publish-channel-name"></span>
+            <button type="button" id="publish-channel-logout" class="link-btn">Déconnecter</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="publish-connect" class="publish-pane" hidden>
+        <div class="publish-connect-card">
+          <span class="publish-shield" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <h4>Connectez votre chaîne YouTube</h4>
+          <p>La connexion se fait sur la page officielle de Google, dans votre navigateur. Si votre compte gère plusieurs chaînes, Google vous demande laquelle utiliser.</p>
+          <ul class="publish-trust">
+            <li>Votre mot de passe n'est jamais vu par l'application</li>
+            <li>L'accès est chiffré sur cet ordinateur, pour votre session Windows uniquement</li>
+            <li>Déconnexion à tout moment : l'accès est aussi révoqué chez Google</li>
+          </ul>
+          <button type="button" id="publish-connect-btn" class="btn-primary">Connecter une chaîne</button>
+          <div id="publish-connect-waiting" class="publish-waiting" hidden>
+            <span class="publish-spinner" aria-hidden="true"></span>
+            <span>Terminez la connexion dans votre navigateur…</span>
+            <button type="button" id="publish-connect-cancel" class="link-btn">Annuler</button>
+          </div>
+          <p id="publish-connect-error" class="error-text" hidden></p>
+        </div>
+        <div class="modal-actions"><button type="button" class="btn-secondary publish-dismiss">Fermer</button></div>
+      </div>
+
+      <div id="publish-form" class="publish-pane" hidden>
+        <div class="publish-autofill">
+          <div class="settings-row-text">
+            <p class="settings-row-title">Reprendre les infos de la vidéo d'origine</p>
+            <p class="hint-text">Titre, description et miniature remplis en un clic.</p>
+          </div>
+          <button id="toggle-publish-autofill" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
+        </div>
+
+        <div class="publish-grid">
+          <div class="publish-col-thumb">
+            <label class="option-label">Miniature</label>
+            <div class="publish-thumb">
+              <img id="publish-thumb-img" alt="" hidden>
+              <span id="publish-thumb-empty" class="publish-thumb-empty">Choisie automatiquement par YouTube</span>
+            </div>
+            <div class="publish-thumb-actions" id="publish-thumb-actions">
+              <button type="button" class="pill-btn" data-thumb="source">D'origine</button>
+              <button type="button" class="pill-btn" data-thumb="file">Importer…</button>
+              <button type="button" class="pill-btn" data-thumb="none">Aucune</button>
+            </div>
+          </div>
+          <div class="publish-col-fields">
+            <label class="option-label" for="publish-title">Titre <span class="publish-count" id="publish-title-count"></span></label>
+            <input type="text" id="publish-title" maxlength="100" placeholder="Titre de la vidéo" autocomplete="off">
+            <label class="option-label" for="publish-description">Description <span class="publish-count" id="publish-description-count"></span></label>
+            <textarea id="publish-description" rows="5" maxlength="5000" placeholder="Description (facultative)"></textarea>
+          </div>
+        </div>
+
+        <label class="option-label">Visibilité</label>
+        <div class="publish-visibility" id="publish-visibility">
+          <button type="button" class="vis-btn" data-vis="public"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>Publique</button>
+          <button type="button" class="vis-btn" data-vis="unlisted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>Non répertoriée</button>
+          <button type="button" class="vis-btn" data-vis="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Privée</button>
+          <button type="button" class="vis-btn" data-vis="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Programmer</button>
+        </div>
+        <div id="publish-schedule" class="publish-schedule" hidden>
+          <div class="publish-quick" id="publish-quick"></div>
+          <div class="publish-datetime">
+            <input type="date" id="publish-date">
+            <input type="time" id="publish-time" step="300">
+            <span id="publish-schedule-label" class="publish-schedule-label"></span>
+          </div>
+        </div>
+
+        <div class="settings-row publish-kids">
+          <div class="settings-row-text">
+            <p class="settings-row-title">Conçue pour les enfants</p>
+            <p class="hint-text">Déclaration obligatoire pour YouTube. Laissez désactivé si la vidéo ne s'adresse pas aux enfants.</p>
+          </div>
+          <button id="toggle-publish-kids" class="switch" role="switch" aria-checked="false"><span class="switch-thumb"></span></button>
+        </div>
+
+        <p id="publish-error" class="error-text" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary publish-dismiss">Annuler</button>
+          <button type="button" id="publish-submit" class="btn-primary">Publier</button>
+        </div>
+      </div>
+
+      <div id="publish-progress" class="publish-pane" hidden>
+        <div class="publish-progress-card">
+          <img id="publish-progress-thumb" class="publish-progress-thumb" alt="" hidden>
+          <div class="publish-progress-body">
+            <p id="publish-progress-title" class="publish-progress-title"></p>
+            <div class="publish-progress-top"><span id="publish-progress-percent">0%</span><span id="publish-progress-meta"></span></div>
+            <div class="progress-bar"><div id="publish-progress-fill" class="progress-bar-fill"></div></div>
+          </div>
+        </div>
+        <p class="hint-text publish-progress-hint">Gardez l'application ouverte pendant l'envoi. Une coupure de connexion reprend là où elle s'est arrêtée.</p>
+        <div class="modal-actions"><button type="button" id="publish-stop" class="btn-secondary">Annuler l'envoi</button></div>
+      </div>
+
+      <div id="publish-done" class="publish-pane publish-done" hidden>
+        <div class="result-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></div>
+        <h3 id="publish-done-title"></h3>
+        <p id="publish-done-text" class="modal-meta"></p>
+        <p id="publish-done-warning" class="publish-warning" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="publish-copy-link" class="btn-secondary">Copier le lien</button>
+          <button type="button" id="publish-open-studio" class="btn-primary">Ouvrir dans YouTube Studio</button>
+        </div>
+        <button type="button" class="link-btn publish-dismiss publish-done-close">Fermer</button>
       </div>
     </div>
   </div>
@@ -541,62 +657,6 @@
       <p class="modal-meta">Consultez le bouton « Nouveautés », à côté de Paramètres, pour voir tout ce qui a changé.</p>
       <div class="modal-actions">
         <button id="welcome-close" class="btn-primary btn-full">Découvrir</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal : notation (obligatoire, sans bouton pour fermer) -->
-  <div id="modal-rating" class="modal-overlay">
-    <div class="modal">
-      <button type="button" id="rating-dismiss" class="modal-corner-btn" aria-label="Fermer" title="Fermer">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-      <div id="rating-step-stars">
-        <span class="update-badge">Votre avis compte</span>
-        <h3>Que pensez-vous de Downloader Youtube ?</h3>
-        <p class="modal-meta">Prenez un instant pour noter l'application.</p>
-        <div class="star-rating" id="star-rating">
-          <button type="button" class="star-btn" data-star="1">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          </button>
-          <button type="button" class="star-btn" data-star="2">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          </button>
-          <button type="button" class="star-btn" data-star="3">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          </button>
-          <button type="button" class="star-btn" data-star="4">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          </button>
-          <button type="button" class="star-btn" data-star="5">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-            <svg class="star-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.9 7.1.6-5.5 4.7 1.8 7-6.3-4-6.3 4 1.8-7L2 10l7.1-.6L12 2.5Z"/></svg>
-          </button>
-        </div>
-        <p class="star-rating-value" id="star-rating-value">Survolez pour noter</p>
-        <div class="modal-actions">
-          <button id="rating-continue" class="btn-primary btn-full" disabled>Continuer</button>
-        </div>
-      </div>
-      <div id="rating-step-comment" hidden>
-        <h3>Un dernier mot ?</h3>
-        <p class="modal-meta">Dites-nous ce que vous en pensez (au moins 100 caractères).</p>
-        <textarea id="rating-comment" class="rating-textarea" rows="5" placeholder="Qu'est-ce qui vous plaît ? Qu'est-ce qu'on pourrait améliorer ?"></textarea>
-        <p class="rating-char-count" id="rating-char-count">0 / 100</p>
-        <div class="modal-actions">
-          <button id="rating-submit" class="btn-primary btn-full" disabled>Envoyer</button>
-        </div>
-      </div>
-      <div id="rating-step-done" hidden>
-        <h3>Merci pour votre avis !</h3>
-        <p class="modal-meta">Votre retour a bien été envoyé.</p>
-        <div class="modal-actions">
-          <button id="rating-close" class="btn-primary btn-full">Fermer</button>
-        </div>
       </div>
     </div>
   </div>

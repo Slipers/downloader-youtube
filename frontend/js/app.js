@@ -661,110 +661,6 @@ async function checkWelcomeMessage() {
   }
 }
 
-/* ---------- rating / feedback ---------- */
-const RATING_STALE_DAYS = 30;
-const RATING_MIN_CHARS = 100;
-let ratingSelectedStars = 0;
-
-function updateStarDisplay(rating) {
-  document.querySelectorAll("#star-rating .star-btn").forEach((btn) => {
-    const starIndex = Number(btn.dataset.star);
-    let fill = 0;
-    if (rating >= starIndex) fill = 100;
-    else if (rating >= starIndex - 0.5) fill = 50;
-    btn.style.setProperty("--fill", `${fill}%`);
-  });
-}
-
-function starsFromPointer(e, btn) {
-  const rect = btn.getBoundingClientRect();
-  const starIndex = Number(btn.dataset.star);
-  const isLeftHalf = e.clientX - rect.left < rect.width / 2;
-  return isLeftHalf ? starIndex - 0.5 : starIndex;
-}
-
-function initRatingModal() {
-  document.querySelectorAll("#star-rating .star-btn").forEach((btn) => {
-    btn.addEventListener("mousemove", (e) => updateStarDisplay(starsFromPointer(e, btn)));
-    btn.addEventListener("mouseleave", () => updateStarDisplay(ratingSelectedStars));
-    btn.addEventListener("click", (e) => {
-      ratingSelectedStars = starsFromPointer(e, btn);
-      updateStarDisplay(ratingSelectedStars);
-      $("star-rating-value").textContent = `${ratingSelectedStars} / 5`;
-      $("rating-continue").disabled = ratingSelectedStars <= 0;
-    });
-  });
-
-  $("rating-continue").addEventListener("click", () => {
-    $("rating-step-stars").hidden = true;
-    $("rating-step-comment").hidden = false;
-    fitModalToViewport("modal-rating");
-    $("rating-comment").focus();
-  });
-
-  const commentInput = $("rating-comment");
-  const charCount = $("rating-char-count");
-  const submitBtn = $("rating-submit");
-  commentInput.addEventListener("input", () => {
-    const len = commentInput.value.trim().length;
-    charCount.textContent = `${len} / ${RATING_MIN_CHARS}`;
-    charCount.classList.toggle("ok", len >= RATING_MIN_CHARS);
-    submitBtn.disabled = len < RATING_MIN_CHARS;
-  });
-
-  submitBtn.addEventListener("click", async () => {
-    submitBtn.disabled = true;
-    const originalLabel = submitBtn.textContent;
-    submitBtn.textContent = "Envoi…";
-    try {
-      const result = await Api.submitRating(ratingSelectedStars, commentInput.value.trim());
-      if (result.ok) {
-        state.settings.last_rating_at = Date.now() / 1000;
-        updateRatingBadge();
-      }
-    } catch (err) { /* the modal still closes -- nothing more the user can do about a failed send */ }
-    submitBtn.textContent = originalLabel;
-    $("rating-step-comment").hidden = true;
-    $("rating-step-done").hidden = false;
-    fitModalToViewport("modal-rating");
-  });
-
-  $("rating-close").addEventListener("click", () => closeModal("modal-rating"));
-  $("rating-dismiss").addEventListener("click", () => closeModal("modal-rating"));
-  $("btn-rate-app").addEventListener("click", () => {
-    closeModal("modal-settings");
-    openRatingModal();
-  });
-}
-
-function openRatingModal() {
-  ratingSelectedStars = 0;
-  $("rating-step-stars").hidden = false;
-  $("rating-step-comment").hidden = true;
-  $("rating-step-done").hidden = true;
-  updateStarDisplay(0);
-  $("star-rating-value").textContent = "Survolez pour noter";
-  $("rating-continue").disabled = true;
-  $("rating-comment").value = "";
-  $("rating-char-count").textContent = `0 / ${RATING_MIN_CHARS}`;
-  $("rating-char-count").classList.remove("ok");
-  $("rating-submit").disabled = true;
-  openModal("modal-rating");
-}
-
-function isRatingOverdue() {
-  const lastRatingAt = state.settings.last_rating_at;
-  if (!lastRatingAt) return true;
-  const daysSince = (Date.now() / 1000 - lastRatingAt) / 86400;
-  return daysSince >= RATING_STALE_DAYS;
-}
-
-function updateRatingBadge() {
-  const due = isRatingOverdue();
-  $("settings-badge").hidden = !due;
-  $("rate-app-badge").hidden = !due;
-}
-
 /* ---------- start -> platforms -> url ---------- */
 function initStartScreen() {
   $("btn-start").addEventListener("click", openPlatformsScreen);
@@ -1691,6 +1587,12 @@ function runDownload() {
     setStep("download", "done");
     const elapsed = payload.elapsed !== undefined ? payload.elapsed : (performance.now() - downloadStart) / 1000;
     state.resultFolder = payload.folder || null;
+    publish.source = {
+      filepath: payload.filepath,
+      title: payload.title || state.videoInfo?.title || "",
+      description: payload.description || "",
+      thumbnail: state.videoInfo?.thumbnail || null,
+    };
     let done = `Terminé en ${elapsed.toFixed(1)} s`;
     if (payload.quality_downgraded && payload.delivered_height) {
       done += ` — YouTube n'a fourni que du ${payload.delivered_height}p pour cette vidéo`;
@@ -1834,6 +1736,375 @@ function runConfetti(durationSeconds) {
   return () => { stopped = true; canvas.hidden = true; };
 }
 
+/* ---------- publish to YouTube ---------- */
+const YT_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.9-1.7-.9-2.1-.9C15.9 4 12 4 12 4h0s-3.9 0-6.7.1c-.4 0-1.3.1-2.1.9-.6.7-.8 2.2-.8 2.2S2 9 2 10.7v1.6C2 14 2.2 15.7 2.2 15.7s.2 1.5.8 2.2c.8.9 1.8.9 2.3 1 1.6.1 6.7.2 6.7.2s3.9 0 6.7-.2c.4 0 1.3-.1 2.1-.9.6-.7.8-2.2.8-2.2s.2-1.6.2-3.3v-1.6c0-1.7-.2-3.4-.2-3.4ZM9.9 14.5V8.8l5.4 2.9-5.4 2.8Z"/></svg>';
+const SCHEDULE_MIN_LEAD_MS = 5 * 60 * 1000;
+
+const publish = {
+  source: null,             // the finished download: filepath, title, description, thumbnail
+  channel: null,
+  thumb: { kind: "none" },  // "source" | "file" (path + preview) | "none"
+  visibility: "public",
+  publishAt: null,
+  uploading: false,
+  videoId: null,
+};
+
+function canPublish(source) {
+  if (!source || !source.filepath || state.exportType === "audio_only") return false;
+  return !(filesSetupActive() && filesSetup().video === false);
+}
+
+function showPublishPane(id) {
+  ["publish-connect", "publish-form", "publish-progress", "publish-done"].forEach((pane) => {
+    $(pane).hidden = pane !== id;
+  });
+  $("publish-channel-logout").hidden = id === "publish-progress";
+  fitModalToViewport("modal-publish");
+}
+
+function renderPublishChannel() {
+  const c = publish.channel;
+  $("publish-channel").hidden = !c;
+  if (!c) return;
+  $("publish-channel-avatar").src = c.avatar || "";
+  $("publish-channel-name").textContent = c.title;
+  $("publish-channel").title = c.handle ? `${c.title} (${c.handle})` : c.title;
+}
+
+async function openPublishModal() {
+  $("publish-file").textContent = publish.source.filepath.split(/[\\/]/).pop();
+  $("publish-error").hidden = true;
+  $("publish-connect-error").hidden = true;
+  $("publish-connect-btn").disabled = false;
+  publish.channel = null;
+  renderPublishChannel();
+  showPublishPane("publish-connect");
+  openModal("modal-publish");
+
+  const status = await Api.getPublishStatus();
+  if (!status.configured) {
+    $("publish-connect-btn").disabled = true;
+    $("publish-connect-error").hidden = false;
+    $("publish-connect-error").textContent = "La publication YouTube n'est pas encore configurée dans cette version de l'application.";
+    return;
+  }
+  if (status.connected) {
+    publish.channel = status.channel;
+    renderPublishChannel();
+    resetPublishForm();
+    showPublishPane("publish-form");
+  }
+}
+
+function resetPublishForm() {
+  const autofill = state.settings.publish_autofill !== false;
+  setSwitch($("toggle-publish-autofill"), autofill);
+  applyPublishAutofill(autofill);
+  setSwitch($("toggle-publish-kids"), false);
+  publish.publishAt = null;
+  setPublishVisibility("public");
+  $("publish-error").hidden = true;
+}
+
+function applyPublishAutofill(on) {
+  const src = publish.source;
+  $("publish-title").value = on ? (src.title || "").slice(0, 100) : "";
+  $("publish-description").value = on ? (src.description || "").slice(0, 5000) : "";
+  publish.thumb = on && src.thumbnail ? { kind: "source" } : { kind: "none" };
+  updatePublishCounts();
+  renderPublishThumb();
+}
+
+function updatePublishCounts() {
+  const title = $("publish-title").value.length;
+  const desc = $("publish-description").value.length;
+  $("publish-title-count").textContent = `${title}/100`;
+  $("publish-title-count").classList.toggle("warn", title > 90);
+  $("publish-description-count").textContent = `${desc}/5000`;
+  $("publish-description-count").classList.toggle("warn", desc > 4800);
+}
+
+function currentPublishThumbSrc() {
+  if (publish.thumb.kind === "source") return publish.source.thumbnail;
+  if (publish.thumb.kind === "file") return publish.thumb.preview;
+  return null;
+}
+
+function renderPublishThumb() {
+  const src = currentPublishThumbSrc();
+  $("publish-thumb-img").hidden = !src;
+  if (src) $("publish-thumb-img").src = src;
+  $("publish-thumb-empty").hidden = !!src;
+  document.querySelectorAll("#publish-thumb-actions .pill-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.thumb === publish.thumb.kind);
+    if (btn.dataset.thumb === "source") btn.disabled = !publish.source.thumbnail;
+  });
+}
+
+const PUBLISH_SUBMIT_LABEL = {
+  public: "Publier",
+  unlisted: "Publier en non répertoriée",
+  private: "Mettre en ligne en privé",
+  schedule: "Programmer",
+};
+
+function setPublishVisibility(vis) {
+  publish.visibility = vis;
+  document.querySelectorAll("#publish-visibility .vis-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.vis === vis);
+  });
+  $("publish-schedule").hidden = vis !== "schedule";
+  $("publish-submit").textContent = PUBLISH_SUBMIT_LABEL[vis];
+  if (vis === "schedule") {
+    if (!publish.publishAt) setPublishAt(publishQuickOptions()[0].date);
+    else renderPublishSchedule();
+  }
+  fitModalToViewport("modal-publish");
+}
+
+function atTime(daysFromToday, hours, minutes = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromToday);
+  d.setHours(hours, minutes, 0, 0);
+  return d;
+}
+
+// One-click slots, Opus Clip style: always a few that are still ahead.
+function publishQuickOptions() {
+  const now = new Date();
+  const inOneHour = new Date(Math.ceil((now.getTime() + 60 * 60 * 1000) / (5 * 60 * 1000)) * 5 * 60 * 1000);
+  const options = [{ label: "Dans 1 h", date: inOneHour }];
+  if (now.getHours() < 17) options.push({ label: "Ce soir 18:00", date: atTime(0, 18) });
+  if (now.getHours() < 19) options.push({ label: "Ce soir 20:00", date: atTime(0, 20) });
+  options.push({ label: "Demain 12:00", date: atTime(1, 12) });
+  options.push({ label: "Demain 18:00", date: atTime(1, 18) });
+  const toSaturday = ((6 - now.getDay() + 7) % 7) || 7;
+  if (toSaturday > 1) options.push({ label: "Samedi 10:00", date: atTime(toSaturday, 10) });
+  return options;
+}
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function setPublishAt(date) {
+  publish.publishAt = date;
+  $("publish-date").value = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  $("publish-time").value = `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  renderPublishSchedule();
+}
+
+function publishScheduleValid() {
+  return !!publish.publishAt && !isNaN(publish.publishAt)
+    && publish.publishAt.getTime() - Date.now() >= SCHEDULE_MIN_LEAD_MS;
+}
+
+function formatPublishDate(date) {
+  return date.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+}
+
+function renderPublishSchedule() {
+  $("publish-quick").innerHTML = publishQuickOptions().map((o) => {
+    const active = publish.publishAt && o.date.getTime() === publish.publishAt.getTime();
+    return `<button type="button" class="platform-chip${active ? " active" : ""}" data-at="${o.date.getTime()}">${o.label}</button>`;
+  }).join("");
+  const label = $("publish-schedule-label");
+  const valid = publishScheduleValid();
+  label.classList.toggle("invalid", !valid);
+  label.textContent = valid ? `Mise en ligne ${formatPublishDate(publish.publishAt)}`
+    : "Choisissez un moment au moins 5 minutes dans le futur.";
+}
+
+function publishPayload() {
+  const thumb = publish.thumb;
+  return {
+    filepath: publish.source.filepath,
+    title: $("publish-title").value.trim(),
+    description: $("publish-description").value,
+    privacy: publish.visibility === "schedule" ? "private" : publish.visibility,
+    publish_at: publish.visibility === "schedule" ? publish.publishAt.toISOString().replace(/\.\d{3}Z$/, "Z") : null,
+    made_for_kids: $("toggle-publish-kids").getAttribute("aria-checked") === "true",
+    thumbnail: thumb.kind === "source" ? { kind: "source", url: publish.source.thumbnail }
+      : thumb.kind === "file" ? { kind: "file", path: thumb.path }
+      : { kind: "none" },
+  };
+}
+
+function showPublishFormError(text) {
+  $("publish-error").hidden = false;
+  $("publish-error").textContent = text;
+  fitModalToViewport("modal-publish");
+}
+
+function submitPublish() {
+  $("publish-error").hidden = true;
+  if (!$("publish-title").value.trim()) return showPublishFormError("Donnez un titre à la vidéo.");
+  if (publish.visibility === "schedule" && !publishScheduleValid()) {
+    return showPublishFormError("La date de programmation doit être au moins 5 minutes dans le futur.");
+  }
+  const payload = publishPayload();
+  const scheduledFor = publish.visibility === "schedule" ? publish.publishAt : null;
+  const visibility = publish.visibility;
+
+  const thumbSrc = currentPublishThumbSrc();
+  $("publish-progress-thumb").hidden = !thumbSrc;
+  if (thumbSrc) $("publish-progress-thumb").src = thumbSrc;
+  $("publish-progress-title").textContent = payload.title;
+  $("publish-progress-percent").textContent = "0%";
+  $("publish-progress-meta").textContent = "Préparation…";
+  $("publish-progress-fill").style.width = "0%";
+  $("publish-stop").disabled = false;
+  showPublishPane("publish-progress");
+  publish.uploading = true;
+
+  const progressHandler = (p) => {
+    const pct = p.total ? Math.min(100, Math.floor((p.sent / p.total) * 100)) : 0;
+    $("publish-progress-percent").textContent = `${pct}%`;
+    $("publish-progress-fill").style.width = `${pct}%`;
+    const parts = [];
+    if (p.speed) parts.push(formatSpeed(p.speed));
+    if (p.eta) parts.push(`${formatEta(p.eta)} restant`);
+    parts.push(`${formatBytes(p.sent) || "0 Mo"} / ${formatBytes(p.total)}`);
+    $("publish-progress-meta").textContent = pct >= 100 ? "Finalisation chez YouTube…" : parts.join(" · ");
+  };
+  const finish = () => {
+    publish.uploading = false;
+    Api.off("publish_progress", progressHandler);
+    Api.off("publish_complete", completeHandler);
+    Api.off("publish_error", errorHandler);
+    Api.off("publish_cancelled", cancelledHandler);
+  };
+  const completeHandler = (result) => {
+    finish();
+    publish.videoId = result.video_id;
+    const channel = publish.channel ? publish.channel.title : "votre chaîne";
+    const titles = {
+      public: "Vidéo publiée !",
+      unlisted: "Vidéo publiée en non répertoriée",
+      private: "Vidéo mise en ligne en privé",
+      schedule: "Vidéo programmée !",
+    };
+    $("publish-done-title").textContent = titles[visibility];
+    $("publish-done-text").textContent = scheduledFor
+      ? `Elle sera publiée sur ${channel} ${formatPublishDate(scheduledFor)}.`
+      : `Elle est en ligne sur ${channel}. YouTube termine son traitement (quelques minutes pour la HD).`;
+    $("publish-done-warning").hidden = !result.thumbnail_error;
+    $("publish-done-warning").textContent = result.thumbnail_error || "";
+    $("publish-copy-link").textContent = "Copier le lien";
+    showPublishPane("publish-done");
+    if (state.sfxEnabled) playDownloadCompleteSfx();
+  };
+  const errorHandler = (p) => {
+    finish();
+    showPublishPane("publish-form");
+    showPublishFormError(p.error);
+  };
+  const cancelledHandler = () => {
+    finish();
+    showPublishPane("publish-form");
+    showPublishFormError("Envoi annulé : rien n'a été publié.");
+  };
+  Api.on("publish_progress", progressHandler);
+  Api.on("publish_complete", completeHandler);
+  Api.on("publish_error", errorHandler);
+  Api.on("publish_cancelled", cancelledHandler);
+  Api.startPublish(payload);
+}
+
+function initPublishModal() {
+  document.querySelectorAll("#modal-publish .publish-dismiss").forEach((btn) => {
+    btn.addEventListener("click", () => closeModal("modal-publish"));
+  });
+
+  $("publish-connect-btn").addEventListener("click", async () => {
+    $("publish-connect-btn").hidden = true;
+    $("publish-connect-waiting").hidden = false;
+    $("publish-connect-error").hidden = true;
+    const res = await Api.connectPublishChannel();
+    $("publish-connect-btn").hidden = false;
+    $("publish-connect-waiting").hidden = true;
+    if (res.ok) {
+      publish.channel = res.channel;
+      renderPublishChannel();
+      resetPublishForm();
+      showPublishPane("publish-form");
+    } else if (!res.cancelled) {
+      $("publish-connect-error").hidden = false;
+      $("publish-connect-error").textContent = res.error;
+    }
+  });
+  $("publish-connect-cancel").addEventListener("click", () => Api.cancelPublishConnect());
+
+  $("publish-channel-logout").addEventListener("click", async () => {
+    await Api.disconnectPublishChannel();
+    publish.channel = null;
+    renderPublishChannel();
+    showPublishPane("publish-connect");
+  });
+
+  const autofill = $("toggle-publish-autofill");
+  autofill.addEventListener("click", () => {
+    const on = autofill.getAttribute("aria-checked") !== "true";
+    setSwitch(autofill, on);
+    applyPublishAutofill(on);
+    state.settings.publish_autofill = on;
+    Api.savePreference("publish_autofill", on);
+  });
+  const kids = $("toggle-publish-kids");
+  kids.addEventListener("click", () => setSwitch(kids, kids.getAttribute("aria-checked") !== "true"));
+
+  $("publish-title").addEventListener("input", updatePublishCounts);
+  $("publish-description").addEventListener("input", updatePublishCounts);
+
+  $("publish-thumb-actions").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".pill-btn");
+    if (!btn) return;
+    if (btn.dataset.thumb === "file") {
+      const res = await Api.pickPublishThumbnail();
+      if (!res) return;
+      if (!res.ok) return showPublishFormError(res.error);
+      publish.thumb = { kind: "file", path: res.path, preview: res.preview };
+    } else {
+      publish.thumb = { kind: btn.dataset.thumb };
+    }
+    $("publish-error").hidden = true;
+    renderPublishThumb();
+  });
+
+  $("publish-visibility").addEventListener("click", (e) => {
+    const btn = e.target.closest(".vis-btn");
+    if (btn) setPublishVisibility(btn.dataset.vis);
+  });
+  $("publish-quick").addEventListener("click", (e) => {
+    const chip = e.target.closest(".platform-chip");
+    if (chip) setPublishAt(new Date(Number(chip.dataset.at)));
+  });
+  const onDateInput = () => {
+    const date = $("publish-date").value;
+    const time = $("publish-time").value;
+    publish.publishAt = date && time ? new Date(`${date}T${time}`) : null;
+    renderPublishSchedule();
+  };
+  $("publish-date").addEventListener("input", onDateInput);
+  $("publish-time").addEventListener("input", onDateInput);
+
+  $("publish-submit").addEventListener("click", submitPublish);
+  $("publish-stop").addEventListener("click", () => {
+    $("publish-stop").disabled = true;
+    $("publish-progress-meta").textContent = "Annulation…";
+    Api.cancelPublish();
+  });
+
+  $("publish-open-studio").addEventListener("click", () => {
+    if (publish.videoId) Api.openYoutubeLink(`https://studio.youtube.com/video/${publish.videoId}/edit`);
+  });
+  $("publish-copy-link").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(`https://youtu.be/${publish.videoId}`);
+      $("publish-copy-link").textContent = "Lien copié !";
+    } catch (err) { /* ignore */ }
+  });
+}
+
 /* ---------- result screen ---------- */
 const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
 
@@ -1846,7 +2117,6 @@ function showResult(kind, title, text, filepath) {
     icon.innerHTML = CHECK_ICON;
     runConfetti(state.confettiSeconds);
     if (state.sfxEnabled) playDownloadCompleteSfx();
-    updateRatingBadge();
   } else {
     icon.textContent = kind === "cancelled" ? "!" : "✕";
   }
@@ -1879,8 +2149,16 @@ function showResult(kind, title, text, filepath) {
     }
   }
 
+  if (kind === "success" && canPublish(publish.source)) {
+    const publishBtn = document.createElement("button");
+    publishBtn.className = "btn-primary btn-publish";
+    publishBtn.innerHTML = `${YT_ICON}<span>Publier sur YouTube</span>`;
+    publishBtn.addEventListener("click", openPublishModal);
+    actions.appendChild(publishBtn);
+  }
+
   const restartBtn = document.createElement("button");
-  restartBtn.className = "btn-primary";
+  restartBtn.className = kind === "success" && canPublish(publish.source) ? "btn-secondary" : "btn-primary";
   restartBtn.textContent = "Télécharger une autre vidéo";
   restartBtn.addEventListener("click", () => {
     state.url = "";
@@ -2058,8 +2336,8 @@ async function init() {
   initAppUpdateModal();
   initChangelogModal();
   initWelcomeModal();
-  initRatingModal();
   initStopButton();
+  initPublishModal();
   setSplashProgress(15);
 
   const settings = await Api.getSettings();
@@ -2101,7 +2379,6 @@ async function init() {
     toggle.classList.toggle("on", state.alwaysConfirmVideo);
     toggle.setAttribute("aria-checked", String(state.alwaysConfirmVideo));
   });
-  updateRatingBadge();
 
   initTheme(settings.theme);
 

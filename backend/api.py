@@ -1,4 +1,5 @@
 """Bridge class exposed to the JS frontend via pywebview's js_api."""
+import base64
 import json
 import math
 import os
@@ -6,12 +7,14 @@ import re
 import shutil
 import threading
 import time
+import webbrowser
 from pathlib import Path
 
+import requests
 import webview
 from yt_dlp.utils import DownloadCancelled, sanitize_filename
 
-from . import browsers, clipboard, config, cookie_store, downloader, extension_installer, feedback, ffmpeg_manager, js_runtime, updater, window_utils
+from . import browsers, clipboard, config, cookie_store, downloader, extension_installer, ffmpeg_manager, js_runtime, updater, window_utils, youtube_publish
 
 YOUTUBE_URL_RE = re.compile(r"^https?://(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)/")
 # Per-platform checks live in the frontend catalog; any web page is worth
@@ -58,17 +61,11 @@ class Api:
             "show_preview", "last_quality", "last_fps", "last_export_type",
             "last_output_format", "confetti_seconds", "last_seen_version",
             "sfx_enabled", "always_confirm_video", "copy_thumbnail",
-            "embed_metadata", "on_existing_file", "files_setup",
+            "embed_metadata", "on_existing_file", "files_setup", "publish_autofill",
         }
         if key in allowed:
             config.save_settings({key: value})
         return True
-
-    def submit_rating(self, stars: float, comment: str):
-        ok = feedback.send_rating(stars, (comment or "").strip())
-        if ok:
-            config.save_settings({"last_rating_at": time.time()})
-        return {"ok": ok}
 
     # ---- folder picker (native) -------------------------------------------
     def pick_folder(self, remember=True):
@@ -352,6 +349,108 @@ class Api:
             self._push("download_cancelled", {})
         except Exception as exc:
             self._push("download_error", {"error": self._friendly_error(exc, url)})
+
+    # ---- publishing to YouTube ----------------------------------------------
+    def get_publish_status(self):
+        return youtube_publish.status()
+
+    def connect_publish_channel(self):
+        try:
+            return {"ok": True, "channel": youtube_publish.connect()}
+        except youtube_publish.PublishCancelled:
+            return {"ok": False, "cancelled": True}
+        except youtube_publish.PublishError as exc:
+            return {"ok": False, "error": str(exc)}
+        except Exception as exc:
+            return {"ok": False, "error": f"La connexion a échoué : {exc}"}
+        finally:
+            # The consent page took the focus away: come back to the app.
+            window_utils.focus_window(WINDOW_TITLE)
+
+    def open_youtube_link(self, url: str):
+        # Only ever YouTube pages: this must not become a way for page
+        # content to launch arbitrary URLs or programs.
+        if re.match(r"^https://(?:studio\.youtube\.com|(?:www\.)?youtube\.com|youtu\.be)/", url or ""):
+            webbrowser.open(url)
+            return True
+        return False
+
+    def cancel_publish_connect(self):
+        youtube_publish.cancel_connect()
+        return True
+
+    def disconnect_publish_channel(self):
+        youtube_publish.disconnect()
+        return True
+
+    def pick_publish_thumbnail(self):
+        if not self.window:
+            return None
+        result = self.window.create_file_dialog(
+            webview.OPEN_DIALOG, file_types=("Images (*.jpg;*.jpeg;*.png;*.webp)",),
+        )
+        if not result:
+            return None
+        path = result[0] if isinstance(result, (list, tuple)) else result
+        try:
+            preview = youtube_publish.prepare_thumbnail(Path(path).read_bytes())
+        except Exception:
+            return {"ok": False, "error": "Cette image n'a pas pu être lue."}
+        return {"ok": True, "path": path,
+                "preview": "data:image/jpeg;base64," + base64.b64encode(preview).decode("ascii")}
+
+    def start_publish(self, payload: dict):
+        self._publish_cancel = threading.Event()
+        threading.Thread(target=self._run_publish, args=(payload, self._publish_cancel), daemon=True).start()
+        return {"started": True}
+
+    def cancel_publish(self):
+        if getattr(self, "_publish_cancel", None) is not None:
+            self._publish_cancel.set()
+        return True
+
+    @staticmethod
+    def _publish_thumbnail_bytes(thumb: dict) -> bytes | None:
+        kind = (thumb or {}).get("kind")
+        if kind == "file":
+            return youtube_publish.prepare_thumbnail(Path(thumb["path"]).read_bytes())
+        if kind == "source" and thumb.get("url"):
+            resp = requests.get(thumb["url"], timeout=30, headers={"User-Agent": "DownloaderYoutube"})
+            resp.raise_for_status()
+            return youtube_publish.prepare_thumbnail(resp.content)
+        return None
+
+    def _run_publish(self, payload, cancel_event):
+        try:
+            try:
+                thumbnail = self._publish_thumbnail_bytes(payload.get("thumbnail"))
+                thumb_error = None
+            except Exception:
+                thumbnail, thumb_error = None, "La miniature n'a pas pu être préparée : la vidéo a été envoyée sans."
+            roller = downloader._RollingSpeed()
+            last_push = [0.0]
+
+            def on_progress(sent, total):
+                now = time.monotonic()
+                speed, eta = roller.update(sent, total)
+                if now - last_push[0] < 0.2 and sent < total:
+                    return
+                last_push[0] = now
+                self._push("publish_progress", {"sent": sent, "total": total, "speed": speed, "eta": eta})
+
+            result = youtube_publish.upload(
+                payload["filepath"], payload.get("title") or "", payload.get("description") or "",
+                payload.get("privacy") or "private", payload.get("publish_at"),
+                bool(payload.get("made_for_kids")), thumbnail, on_progress, cancel_event,
+            )
+            result["thumbnail_error"] = result["thumbnail_error"] or thumb_error
+            self._push("publish_complete", result)
+        except youtube_publish.PublishCancelled:
+            self._push("publish_cancelled", {})
+        except youtube_publish.PublishError as exc:
+            self._push("publish_error", {"error": str(exc)})
+        except Exception as exc:
+            self._push("publish_error", {"error": f"La publication a échoué : {exc}"})
 
     # ---- browser extension ------------------------------------------------
     def get_extension_status(self):

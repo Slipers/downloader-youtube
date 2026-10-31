@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.43"
+APP_VERSION = "1.44"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,16 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.44",
+        "date": "31 octobre 2026",
+        "bullets": [
+            "Nouveau : publiez sur YouTube directement depuis l'application. Après un téléchargement, cliquez sur « Publier sur YouTube », connectez votre chaîne en toute sécurité via la page officielle de Google, et la vidéo part sur votre chaîne.",
+            "Titre, description et miniature de la vidéo téléchargée sont repris en un clic (option « Reprendre les infos de la vidéo d'origine »), et restent modifiables.",
+            "Programmation facile : choisissez « Dans 1 h », « Ce soir », « Demain »… ou une date précise. Publique, non répertoriée ou privée au choix.",
+            "Le système de notation a été retiré.",
+        ],
+    },
     {
         "version": "1.43",
         "date": "31 octobre 2026",
