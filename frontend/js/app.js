@@ -295,6 +295,22 @@ function filesSetupActive() {
   return !!(setup.enabled && setup.root_dir);
 }
 
+// Settings saved before the per-field text files had a single "text" flag,
+// which meant one file with everything in it.
+function textFilesSetup(setup) {
+  if (setup.text_title === undefined) {
+    const on = setup.text !== false;
+    return { title: on, description: on, link: on, combined: true };
+  }
+  return { title: !!setup.text_title, description: !!setup.text_description, link: !!setup.text_link, combined: !!setup.text_combined };
+}
+
+function syncCombineCheck() {
+  const count = ["setup-text-title", "setup-text-description", "setup-text-link"].filter((id) => $(id).checked).length;
+  $("setup-text-combined").disabled = count < 2;
+  $("setup-text-combined").closest(".setup-check").classList.toggle("disabled", count < 2);
+}
+
 function renderFilesSetupHint() {
   const setup = filesSetup();
   $("files-setup-hint").textContent = filesSetupActive() ? `Activé — ${setup.root_dir}`
@@ -314,7 +330,12 @@ function initFilesSetup() {
     $("files-setup-dir").value = setup.root_dir || "";
     $("setup-video").checked = setup.video !== false;
     $("setup-thumbnail").checked = setup.thumbnail !== false;
-    $("setup-text").checked = setup.text !== false;
+    const text = textFilesSetup(setup);
+    $("setup-text-title").checked = text.title;
+    $("setup-text-description").checked = text.description;
+    $("setup-text-link").checked = text.link;
+    $("setup-text-combined").checked = text.combined;
+    syncCombineCheck();
     $("files-setup-error").hidden = true;
     openModal("modal-files-setup");
   });
@@ -327,6 +348,10 @@ function initFilesSetup() {
     }
   });
 
+  ["setup-text-title", "setup-text-description", "setup-text-link"].forEach((id) => {
+    $(id).addEventListener("change", syncCombineCheck);
+  });
+
   $("files-setup-cancel").addEventListener("click", () => closeModal("modal-files-setup"));
 
   $("files-setup-save").addEventListener("click", () => {
@@ -335,11 +360,15 @@ function initFilesSetup() {
       root_dir: $("files-setup-dir").value || null,
       video: $("setup-video").checked,
       thumbnail: $("setup-thumbnail").checked,
-      text: $("setup-text").checked,
+      text_title: $("setup-text-title").checked,
+      text_description: $("setup-text-description").checked,
+      text_link: $("setup-text-link").checked,
+      text_combined: $("setup-text-combined").checked,
     };
+    const anyText = setup.text_title || setup.text_description || setup.text_link;
     const error = !setup.enabled ? ""
       : !setup.root_dir ? "Choisissez un dossier principal."
-      : !(setup.video || setup.thumbnail || setup.text) ? "Cochez au moins un élément à enregistrer."
+      : !(setup.video || setup.thumbnail || anyText) ? "Cochez au moins un élément à enregistrer."
       : "";
     $("files-setup-error").textContent = error;
     $("files-setup-error").hidden = !error;

@@ -483,7 +483,13 @@
       <div class="setup-checks">
         <label class="setup-check"><input type="checkbox" id="setup-video"> Vidéo</label>
         <label class="setup-check"><input type="checkbox" id="setup-thumbnail"> Miniature (.jpg)</label>
-        <label class="setup-check"><input type="checkbox" id="setup-text"> Fichier texte (titre + description)</label>
+        <span class="setup-check-group">Fichiers texte (.txt)</span>
+        <div class="setup-subchecks">
+          <label class="setup-check"><input type="checkbox" id="setup-text-title"> Titre</label>
+          <label class="setup-check"><input type="checkbox" id="setup-text-description"> Description</label>
+          <label class="setup-check"><input type="checkbox" id="setup-text-link"> Lien de la vidéo</label>
+          <label class="setup-check setup-check-combine"><input type="checkbox" id="setup-text-combined"> Combiner dans un seul fichier</label>
+        </div>
       </div>
       <p class="hint-text">Exemple : <em>Dossier principal\Titre de la vidéo\Titre de la vidéo.mp4</em></p>
       <p class="error-text" id="files-setup-error" hidden></p>

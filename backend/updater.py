@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.42"
+APP_VERSION = "1.43"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,14 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.43",
+        "date": "31 octobre 2026",
+        "bullets": [
+            "Organisation des fichiers : le fichier texte se règle désormais élément par élément. Cochez Titre, Description et/ou Lien : chaque élément coché a son propre fichier (Titre.txt, Description.txt, Lien.txt).",
+            "Nouvelle option « Combiner dans un seul fichier » : les éléments cochés sont réunis dans un seul .txt. Votre réglage actuel est conservé tel quel (les trois éléments, combinés).",
+        ],
+    },
     {
         "version": "1.42",
         "date": "28 octobre 2026",

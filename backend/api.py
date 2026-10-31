@@ -235,6 +235,30 @@ class Api:
         setup = (settings or config.load_settings()).get("files_setup") or {}
         return setup if setup.get("enabled") and setup.get("root_dir") else None
 
+    @staticmethod
+    def _write_text_files(setup: dict, folder: Path, base_name: str, result: dict, url: str):
+        """One .txt per checked field, or all of them in "<title>.txt" when
+        combined. Setups saved before the per-field choice only had "text",
+        which meant everything in one file."""
+        if "text_title" in setup:
+            wanted = [k for k in ("title", "description", "link") if setup.get(f"text_{k}")]
+            combined = bool(setup.get("text_combined"))
+        else:
+            wanted = ["title", "description", "link"] if setup.get("text", True) else []
+            combined = True
+        values = {
+            "title": result.get("title") or "",
+            "description": result.get("description") or "",
+            "link": result.get("webpage_url") or url,
+        }
+        if combined and len(wanted) > 1:
+            text = "\n\n".join(values[k] for k in wanted) + "\n"
+            (folder / f"{base_name}.txt").write_text(text, encoding="utf-8")
+            return
+        names = {"title": "Titre", "description": "Description", "link": "Lien"}
+        for key in wanted:
+            (folder / f"{names[key]}.txt").write_text(values[key] + "\n", encoding="utf-8")
+
     def check_output_exists(self, title: str, options: dict):
         """Whether a download under this title would collide with something
         already on disk -- the file itself, or with the files setup on, the
@@ -309,10 +333,8 @@ class Api:
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
             result["folder"] = options["dest_dir"]
-            if setup and setup.get("text"):
-                text_path = Path(options["dest_dir"]) / f"{base_name}.txt"
-                parts = (result.get("title") or "", result.get("description") or "", result.get("webpage_url") or url)
-                text_path.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+            if setup:
+                self._write_text_files(setup, Path(options["dest_dir"]), base_name, result, url)
             if setup and options.get("skip_video"):
                 result["filepath"] = options["dest_dir"]
             total = settings.get("total_downloads", 0) + 1
