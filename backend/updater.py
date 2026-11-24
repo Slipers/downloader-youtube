@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.52"
+APP_VERSION = "1.53"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,14 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.53",
+        "date": "24 novembre 2026",
+        "bullets": [
+            "Corrigé : les téléchargements YouTube bloqués à ~100 Ko/s. Le moteur de téléchargement est mis à jour, et si YouTube bride malgré tout un téléchargement, l'app récupère automatiquement de nouveaux liens et reprend là où elle s'était arrêtée.",
+            "Quand un téléchargement est annulé ou échoue, les fichiers qu'il avait commencé à créer sont supprimés : plus de fichiers .part ou de morceaux qui traînent dans le dossier.",
+        ],
+    },
     {
         "version": "1.52",
         "date": "31 octobre 2026",

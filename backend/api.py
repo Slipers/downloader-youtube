@@ -308,6 +308,10 @@ class Api:
                 write_thumbnail=bool(setup.get("thumbnail")),
                 skip_video=not setup.get("video", True),
             )
+        # What the folder held before: a cancelled or failed download only
+        # ever removes what it added (None: the download creates the folder).
+        dest = Path(options["dest_dir"])
+        existing = set(os.listdir(dest)) if dest.is_dir() else None
         try:
             # The token server may have died since the video was fetched;
             # without it mweb drops to 360p. A single /ping when it's up.
@@ -348,9 +352,37 @@ class Api:
             )
             self._push("download_complete", result)
         except DownloadCancelled:
+            self._discard_partial_download(dest, base_name, existing)
             self._push("download_cancelled", {})
         except Exception as exc:
+            # A quality-check failure is a finished, playable file: the
+            # message tells the user it was kept.
+            if not isinstance(exc, downloader.QualityCheckFailed):
+                self._discard_partial_download(dest, base_name, existing)
             self._push("download_error", {"error": self._friendly_error(exc, url)})
+
+    @staticmethod
+    def _discard_partial_download(dest: Path, base_name: str, existing: set | None):
+        """Removes what a cancelled or failed download left behind: the new
+        files named after the video (streams, .part, fragments, thumbnail),
+        never one that was there before, nor an unrelated file. The
+        per-video folder goes too when this download created it and it is
+        now empty."""
+        if not dest.is_dir():
+            return
+        for name in os.listdir(dest):
+            if existing is not None and name in existing:
+                continue
+            if name.startswith(base_name + "."):
+                try:
+                    (dest / name).unlink()
+                except OSError:
+                    pass
+        if existing is None:
+            try:
+                dest.rmdir()
+            except OSError:
+                pass  # not empty: something else is in there, leave it
 
     def clear_cache(self):
         """Settings > "Vider le cache": stale player code or tokens can make

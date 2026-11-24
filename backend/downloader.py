@@ -1,6 +1,5 @@
 """Thin wrapper around yt_dlp: fetch metadata, build options, run downloads."""
 import base64
-import glob
 import os
 import re
 import subprocess
@@ -9,7 +8,7 @@ from collections import deque
 from pathlib import Path
 
 import yt_dlp
-from yt_dlp.utils import DownloadCancelled, sanitize_filename
+from yt_dlp.utils import DownloadCancelled, ThrottledDownload, sanitize_filename
 
 from . import cookie_store, js_runtime
 # Registers the bgutil PO token HTTP provider with yt-dlp. Vendored (not a
@@ -45,6 +44,12 @@ HTTP_CHUNK_SIZE = 10 * 1024 * 1024
 
 # Fresh extractions tried before accepting a lower quality than requested.
 DEGRADED_SELECTION_ATTEMPTS = 3
+
+# Below this for 3 s (yt-dlp's own window) a stream counts as throttled:
+# YouTube serves a penalized session at ~50-150 KB/s.
+THROTTLED_BYTES_PER_SEC = 256 * 1024
+# Fresh links fetched for a throttled stream before letting it run as is.
+THROTTLE_RETRIES = 3
 
 VIDEO_CONTAINERS = ["mp4", "mkv", "webm"]
 AUDIO_FORMATS = ["mp3", "m4a", "wav", "opus"]
@@ -223,8 +228,10 @@ def _with_auto_cookies(make_opts, run, hint: str | None = None, cookies_file: st
         opts = make_opts(extra)
         try:
             result = run(opts)
-        except DownloadCancelled:
+        except (DownloadCancelled, ThrottledDownload):
             # The user pressed stop: never carry on to the next cookie source.
+            # A throttled stream isn't a cookie problem either: the caller
+            # fetches fresh links with the same source.
             raise
         except Exception as exc:
             last_exc = exc
@@ -573,14 +580,11 @@ def download(
     before anything downloads and retried if it falls short."""
     url = normalize_url(url)
     roller = _RollingSpeed()
-    last_tmpfile = {"path": None}
+    throttle = {"limit": THROTTLED_BYTES_PER_SEC}
 
     def hook(d):
         if cancel_event is not None and cancel_event.is_set():
             raise DownloadCancelled("Téléchargement annulé par l'utilisateur.")
-
-        if d.get("tmpfilename"):
-            last_tmpfile["path"] = d["tmpfilename"]
 
         downloaded = d.get("downloaded_bytes") or 0
         total = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -603,6 +607,8 @@ def download(
         opts = dict(ydl_opts)
         opts.update(cookie_extra)
         opts["progress_hooks"] = [hook]
+        if throttle["limit"]:
+            opts["throttledratelimit"] = throttle["limit"]
         return opts
 
     def meets_expectation(info) -> bool:
@@ -628,30 +634,37 @@ def download(
                 return ydl, info, opts
         return run
 
-    result = None
-    try:
+    def resolve_and_download():
         # A retry usually gets the full ladder back, so a few fresh attempts
         # before settling. Only if every one comes back short does the final
         # pass accept what exists -- and the result says so rather than
         # passing it off as the quality that was asked for.
         for _ in range(DEGRADED_SELECTION_ATTEMPTS):
             try:
-                result, _browser = _with_auto_cookies(
+                return _with_auto_cookies(
                     make_opts, make_run(strict=True),
                     hint=cookies_browser_hint, cookies_file=cookies_file,
-                )
-                break
+                )[0]
             except DegradedSelection:
                 if cancel_event is not None and cancel_event.is_set():
                     raise DownloadCancelled("Téléchargement annulé par l'utilisateur.")
-        if result is None:
-            result, _browser = _with_auto_cookies(
-                make_opts, make_run(strict=False),
-                hint=cookies_browser_hint, cookies_file=cookies_file,
-            )
-    except DownloadCancelled:
-        _cleanup_partial_files(last_tmpfile["path"])
-        raise
+        return _with_auto_cookies(
+            make_opts, make_run(strict=False),
+            hint=cookies_browser_hint, cookies_file=cookies_file,
+        )[0]
+
+    # A throttled stream gets fresh links, and yt-dlp resumes its .part where
+    # it stopped. Bounded here (yt-dlp's own re-extract loop isn't, and
+    # doesn't cover this resolve-then-download flow anyway); the last pass
+    # drops the check so a genuinely slow connection still finishes.
+    for attempt in range(THROTTLE_RETRIES + 1):
+        if attempt == THROTTLE_RETRIES:
+            throttle["limit"] = None
+        try:
+            result = resolve_and_download()
+            break
+        except ThrottledDownload:
+            continue
     ydl, info, used_opts = result
 
     final_path = None
@@ -688,19 +701,3 @@ def download(
             and info.get("extractor_key") == "Youtube"
         ),
     }
-
-
-def _cleanup_partial_files(tmpfilename):
-    if not tmpfilename:
-        return
-    stem = os.path.splitext(tmpfilename)[0]
-    candidates = {tmpfilename, f"{tmpfilename}.part", f"{tmpfilename}.ytdl"}
-    candidates.update(glob.glob(f"{stem}*.part"))
-    candidates.update(glob.glob(f"{stem}*.ytdl"))
-    candidates.update(glob.glob(f"{stem}*.temp.*"))
-    for path in candidates:
-        try:
-            if path and os.path.exists(path):
-                os.remove(path)
-        except OSError:
-            pass
