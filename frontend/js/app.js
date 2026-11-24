@@ -52,6 +52,8 @@ function formatSpeed(bytesPerSec) {
   return `${(bytesPerSec / 1024).toFixed(0)} Ko/s`;
 }
 
+function formatBytesRaw(...args) { return formatBytes(...args); }
+
 function formatBytes(bytes) {
   if (!bytes) return "";
   const mb = bytes / (1024 * 1024);
@@ -1155,6 +1157,8 @@ function updateSizeEstimate() {
   const el = $("size-estimate");
   const info = state.videoInfo;
   if (!info) { el.textContent = ""; return; }
+  const frac = state.cut ? cutKeptFraction() : 1;
+  const formatBytes = (n) => formatBytesRaw(n * frac) + (frac < 0.999 ? " après découpage" : "");
 
   if (state.exportType === "audio_only") {
     el.textContent = info.best_audio_size ? `Taille estimée : ~${formatBytes(info.best_audio_size)}` : "";
@@ -1228,12 +1232,222 @@ function populateOptionsScreen() {
   $("dest-input").value = setupOn ? filesSetup().root_dir : state.destDir;
   $("btn-browse").disabled = setupOn;
   $("dest-setup-hint").hidden = !setupOn;
+  populateCutBlock();
+}
+
+/* ---------- Cutting ---------- */
+// "1:30", "1:02:45", "90", "1m30", "1:30.5" -> seconds; NaN when unreadable.
+function parseTime(text) {
+  const t = String(text || "").trim().replace(",", ".").toLowerCase();
+  if (!t) return NaN;
+  const hms = t.match(/^(?:(\d+)h)?\s*(?:(\d+)m(?:in)?)?\s*(?:(\d+(?:\.\d+)?)s?)?$/);
+  if (/[hm]/.test(t) && hms && (hms[1] || hms[2] || hms[3])) {
+    return (Number(hms[1] || 0) * 3600) + (Number(hms[2] || 0) * 60) + Number(hms[3] || 0);
+  }
+  const parts = t.split(":");
+  if (parts.length > 3 || parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) return NaN;
+  if (parts.slice(0, -1).some((p) => p.includes("."))) return NaN;
+  return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
+}
+
+function formatCutTime(seconds) {
+  const whole = Math.floor(seconds);
+  const frac = Math.round((seconds - whole) * 10);
+  const base = formatDuration(whole + (frac === 10 ? 1 : 0));
+  return frac && frac !== 10 ? `${base}.${frac}` : base;
+}
+
+function cutDuration() {
+  return Number(state.videoInfo?.duration) || 0;
+}
+
+function resetCut() {
+  state.cut = { mode: "none", ranges: [] };
+}
+
+function setCutMode(mode) {
+  const dur = cutDuration();
+  state.cut.mode = mode;
+  if (mode === "keep") {
+    state.cut.ranges = [{ start: "0:00", end: formatCutTime(dur) }];
+  } else if (mode === "remove") {
+    state.cut.ranges = [{ start: "", end: "" }];
+  } else {
+    state.cut.ranges = [];
+  }
+  document.querySelectorAll("#cut-mode .pill-btn").forEach((b) => b.classList.toggle("active", b.dataset.value === mode));
+  $("cut-editor").hidden = mode === "none";
+  $("cut-add-label").textContent = mode === "keep" ? "Ajouter un autre extrait" : "Ajouter un passage à retirer";
+  renderCutRows();
+  if (mode === "remove") document.querySelector("#cut-ranges .cut-time")?.focus();
+}
+
+// Same rule as the backend (segments_to_keep): clamp, merge overlaps, and
+// for "remove" keep the gaps in between.
+function cutAnalysis() {
+  const dur = cutDuration();
+  const mode = state.cut.mode;
+  const result = { keep: [[0, dur]], error: null, invalid: new Set(), active: mode !== "none" };
+  if (!result.active) return result;
+
+  const ranges = [];
+  state.cut.ranges.forEach((r, i) => {
+    const a = parseTime(r.start), b = parseTime(r.end);
+    const blank = !String(r.start).trim() && !String(r.end).trim();
+    if (blank && mode === "remove") { result.invalid.add(`${i}:start`); result.invalid.add(`${i}:end`); result.error ||= "Indiquez le début et la fin du passage à retirer."; return; }
+    if (isNaN(a)) { result.invalid.add(`${i}:start`); result.error ||= `Passage ${i + 1} : début illisible (ex. 1:30 ou 1:02:45).`; }
+    if (isNaN(b)) { result.invalid.add(`${i}:end`); result.error ||= `Passage ${i + 1} : fin illisible (ex. 1:30 ou 1:02:45).`; }
+    if (isNaN(a) || isNaN(b)) return;
+    if (a >= dur) { result.invalid.add(`${i}:start`); result.error ||= `Passage ${i + 1} : la vidéo ne dure que ${formatDuration(dur)}.`; return; }
+    if (b > dur + 0.5) { result.invalid.add(`${i}:end`); result.error ||= `Passage ${i + 1} : la vidéo ne dure que ${formatDuration(dur)}.`; return; }
+    if (b - a < 0.1) { result.invalid.add(`${i}:end`); result.error ||= `Passage ${i + 1} : la fin doit être après le début.`; return; }
+    ranges.push([a, Math.min(b, dur)]);
+  });
+
+  ranges.sort((x, y) => x[0] - y[0]);
+  const merged = [];
+  ranges.forEach(([a, b]) => {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  });
+  if (mode === "keep") {
+    result.keep = merged;
+  } else {
+    const keep = [];
+    let cursor = 0;
+    merged.forEach(([a, b]) => { if (a - cursor >= 0.1) keep.push([cursor, a]); cursor = b; });
+    if (dur - cursor >= 0.1) keep.push([cursor, dur]);
+    result.keep = keep;
+  }
+  if (!result.error && !result.keep.length) result.error = "Ce découpage ne laisse rien de la vidéo.";
+  result.ranges = ranges;
+  return result;
+}
+
+function cutKeptFraction() {
+  const dur = cutDuration();
+  const a = cutAnalysis();
+  if (!a.active || a.error || !dur) return 1;
+  return a.keep.reduce((s, [x, y]) => s + (y - x), 0) / dur;
+}
+
+function renderCutRows() {
+  const box = $("cut-ranges");
+  box.innerHTML = "";
+  const removeMode = state.cut.mode === "remove";
+  state.cut.ranges.forEach((r, i) => {
+    const row = document.createElement("div");
+    row.className = "cut-row";
+    row.innerHTML = `
+      <span class="cut-row-index">${i + 1}</span>
+      <span>${removeMode ? "Retirer de" : "De"}</span>
+      <input type="text" class="cut-time" data-i="${i}" data-k="start" placeholder="0:00" spellcheck="false" autocomplete="off">
+      <span>à</span>
+      <input type="text" class="cut-time" data-i="${i}" data-k="end" placeholder="${formatDuration(cutDuration())}" spellcheck="false" autocomplete="off">
+      <span class="cut-row-len"></span>
+      <button type="button" class="cut-row-del" aria-label="Supprimer ce passage" title="Supprimer">×</button>`;
+    row.querySelector('[data-k="start"]').value = r.start;
+    row.querySelector('[data-k="end"]').value = r.end;
+    row.querySelector(".cut-row-del").disabled = state.cut.ranges.length === 1;
+    row.querySelector(".cut-row-del").addEventListener("click", () => {
+      state.cut.ranges.splice(i, 1);
+      renderCutRows();
+    });
+    row.querySelectorAll(".cut-time").forEach((input) => {
+      input.addEventListener("input", () => {
+        state.cut.ranges[i][input.dataset.k] = input.value;
+        refreshCut();
+      });
+      // Tidy what was typed ("90" -> "1:30") once the field is left.
+      input.addEventListener("blur", () => {
+        const v = parseTime(input.value);
+        if (!isNaN(v)) {
+          input.value = formatCutTime(v);
+          state.cut.ranges[i][input.dataset.k] = input.value;
+          refreshCut();
+        }
+      });
+    });
+    box.appendChild(row);
+  });
+  refreshCut();
+}
+
+function refreshCut() {
+  const dur = cutDuration();
+  const a = cutAnalysis();
+  $("cut-scale-end").textContent = formatDuration(dur);
+
+  document.querySelectorAll("#cut-ranges .cut-time").forEach((input) => {
+    input.classList.toggle("invalid", a.invalid.has(`${input.dataset.i}:${input.dataset.k}`));
+  });
+  document.querySelectorAll("#cut-ranges .cut-row").forEach((row, i) => {
+    const r = state.cut.ranges[i];
+    const x = parseTime(r.start), y = parseTime(r.end);
+    row.querySelector(".cut-row-len").textContent = !isNaN(x) && !isNaN(y) && y > x ? formatDuration(Math.min(y, dur) - x) : "";
+  });
+
+  const timeline = $("cut-timeline");
+  timeline.innerHTML = "";
+  (a.error ? [[0, dur]] : a.keep).forEach(([x, y]) => {
+    const seg = document.createElement("div");
+    seg.className = "cut-seg";
+    seg.style.left = `${(x / dur) * 100}%`;
+    seg.style.width = `${Math.max(0.4, ((y - x) / dur) * 100)}%`;
+    timeline.appendChild(seg);
+  });
+  timeline.style.opacity = a.error ? 0.45 : 1;
+
+  $("cut-error").hidden = !(a.active && a.error);
+  $("cut-error").textContent = a.error || "";
+  if (a.active && !a.error) {
+    const kept = a.keep.reduce((s, [x, y]) => s + (y - x), 0);
+    const pieces = a.keep.length > 1 ? ` en ${a.keep.length} morceaux mis bout à bout` : "";
+    $("cut-summary").textContent = `Durée finale : ${formatDuration(kept)} sur ${formatDuration(dur)}${pieces}. La vidéo est téléchargée en entier puis découpée à l'image près.`;
+  } else {
+    $("cut-summary").textContent = "";
+  }
+  $("btn-options-next").disabled = !!(a.active && a.error);
+  updateSizeEstimate();
+}
+
+// What the backend gets: null for the whole video.
+function cutPayload() {
+  const a = cutAnalysis();
+  if (!a.active || a.error) return null;
+  const dur = cutDuration();
+  if (a.keep.length === 1 && a.keep[0][0] < 0.1 && dur - a.keep[0][1] < 0.1) return null;
+  return { mode: state.cut.mode, ranges: a.ranges };
+}
+
+function populateCutBlock() {
+  resetCut();
+  const dur = cutDuration();
+  $("cut-block").hidden = !dur;
+  document.querySelectorAll("#cut-mode .pill-btn").forEach((b) => b.classList.toggle("active", b.dataset.value === "none"));
+  $("cut-editor").hidden = true;
+  $("btn-options-next").disabled = false;
+}
+
+function initCutBlock() {
+  resetCut();
+  document.querySelectorAll("#cut-mode .pill-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setCutMode(btn.dataset.value));
+  });
+  $("cut-add").addEventListener("click", () => {
+    state.cut.ranges.push({ start: "", end: "" });
+    renderCutRows();
+    const inputs = document.querySelectorAll("#cut-ranges .cut-time");
+    inputs[inputs.length - 2]?.focus();
+  });
 }
 
 function initOptionsScreen() {
   document.querySelectorAll("#export-type .export-card").forEach((btn) => {
     btn.addEventListener("click", () => setExportType(btn.dataset.value));
   });
+  initCutBlock();
 
   $("bitrate-slider").addEventListener("input", updateBitrateDisplay);
   $("fps-manual-input").addEventListener("input", (e) => {
@@ -1250,6 +1464,7 @@ function initOptionsScreen() {
   });
 
   $("btn-options-next").addEventListener("click", () => {
+    if ($("btn-options-next").disabled) return;
     if (!state.destDir) {
       state.destDir = $("dest-input").value || state.settings.last_download_dir;
     }
@@ -1548,6 +1763,12 @@ function runDownload() {
       $("progress-speed").textContent = formatSpeed(payload.speed);
       $("progress-eta").textContent = payload.eta !== null && payload.eta !== undefined ? `ETA ${formatEta(payload.eta)}` : "";
       if (total) updatePreviewFrame(downloaded / total);
+    } else if (payload.status === "cutting") {
+      const pct = Math.min(100, Math.round((payload.progress || 0) * 100));
+      $("progress-bar-fill").style.width = `${pct}%`;
+      $("progress-percent").textContent = `Découpage ${pct}%`;
+      $("progress-speed").textContent = "";
+      $("progress-eta").textContent = payload.eta !== null && payload.eta !== undefined ? `ETA ${formatEta(payload.eta)}` : "Découpage…";
     } else if (payload.status === "finished") {
       $("progress-bar-fill").style.width = "100%";
       $("progress-percent").textContent = "100%";
@@ -1569,6 +1790,7 @@ function runDownload() {
       thumbnail: state.videoInfo?.thumbnail || null,
     };
     let done = `Terminé en ${elapsed.toFixed(1)} s`;
+    if (payload.cut_duration) done += ` — vidéo découpée (${formatDuration(payload.cut_duration)})`;
     if (payload.quality_downgraded && payload.delivered_height) {
       done += ` — YouTube n'a fourni que du ${payload.delivered_height}p pour cette vidéo`;
     }
@@ -1623,6 +1845,7 @@ function runDownload() {
     thumbnail_url: state.videoInfo?.thumbnail || null,
     title: state.videoInfo?.title || null,
     expected_height: expectedHeightForChoice(),
+    cut: cutPayload(),
   });
 }
 

@@ -133,7 +133,7 @@ class Api:
     def _friendly_error(self, exc: Exception, url: str = "") -> str:
         message = str(exc)
         lowered = message.lower()
-        if isinstance(exc, downloader.QualityCheckFailed):
+        if isinstance(exc, (downloader.QualityCheckFailed, downloader.CutFailed)):
             return message
         if isinstance(exc, downloader.NoVideoFound) or "unsupported url" in lowered:
             return "Aucune vidéo téléchargeable n'a été trouvée sur cette page. Vérifiez qu'il s'agit bien du lien d'une vidéo."
@@ -333,6 +333,7 @@ class Api:
                     and options.get("fps") in (None, "auto")
                     else None
                 ),
+                cut=None if options.get("skip_video") else downloader.cut_settings(options),
             )
             result["elapsed"] = round(time.monotonic() - started, 1)
             result["folder"] = options["dest_dir"]

@@ -211,6 +211,31 @@
         </div>
       </div>
 
+      <div class="option-block cut-block" id="cut-block">
+        <label class="option-label">
+          Découpage
+          <span class="tooltip-wrap" data-tooltip="Gardez seulement un ou plusieurs extraits, ou retirez des passages (intro, pub…). Les temps s'écrivent 1:30, 1:02:45 ou en secondes. La coupe est faite à l'image près.">
+            <button type="button" class="info-dot" aria-label="Aide découpage">?</button>
+          </span>
+        </label>
+        <div class="pill-grid cut-mode" id="cut-mode" role="radiogroup">
+          <button type="button" class="pill-btn active" data-value="none">Vidéo entière</button>
+          <button type="button" class="pill-btn" data-value="keep">Garder un extrait</button>
+          <button type="button" class="pill-btn" data-value="remove">Retirer des passages</button>
+        </div>
+        <div class="cut-editor" id="cut-editor" hidden>
+          <div class="cut-timeline" id="cut-timeline" aria-hidden="true"></div>
+          <div class="cut-timeline-scale"><span>0:00</span><span id="cut-scale-end"></span></div>
+          <div class="cut-ranges" id="cut-ranges"></div>
+          <button type="button" class="cut-add" id="cut-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span id="cut-add-label">Ajouter un passage</span>
+          </button>
+          <p class="hint-text" id="cut-summary"></p>
+          <p class="error-text cut-error" id="cut-error" hidden></p>
+        </div>
+      </div>
+
       <button id="btn-options-next" class="btn-primary btn-full">Suivant</button>
     </div>
   </section>

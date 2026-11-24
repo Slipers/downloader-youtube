@@ -1,8 +1,10 @@
 """Thin wrapper around yt_dlp: fetch metadata, build options, run downloads."""
 import base64
+import json
 import os
 import re
 import subprocess
+import threading
 import time
 from collections import deque
 from pathlib import Path
@@ -539,6 +541,226 @@ def _add_extras(opts: dict, options: dict) -> dict:
     return opts
 
 
+# ---------- cutting ----------
+
+# Shorter pieces than this are dropped: a stray click, not a passage.
+_CUT_MIN_SECONDS = 0.1
+
+
+class CutFailed(Exception):
+    """ffmpeg couldn't cut the downloaded file; `message` is user-facing."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+def cut_settings(options: dict) -> dict | None:
+    """The cut the user asked for, with what re-encoding it needs, or None
+    for the whole video. `ranges` are [start, end] in seconds; "keep" keeps
+    only them (joined in order), "remove" keeps everything else."""
+    cut = options.get("cut") or {}
+    if cut.get("mode") not in ("keep", "remove") or not cut.get("ranges"):
+        return None
+    export_type = options.get("export_type")
+    bitrate = int(options.get("bitrate") or 0)
+    video_bitrate = None
+    if export_type != "audio_only":
+        tier = QUALITY_TIERS.get(options.get("quality"), QUALITY_TIERS["auto"])
+        if _needs_reencode(bitrate, tier["recommended_kbps"]):
+            video_bitrate = bitrate
+    return {
+        "mode": cut["mode"],
+        "ranges": [[float(a), float(b)] for a, b in cut["ranges"]],
+        "audio_bitrate": bitrate if export_type == "audio_only" and bitrate else RECOMMENDED_AUDIO_KBPS,
+        "video_bitrate": video_bitrate,
+    }
+
+
+def segments_to_keep(mode: str, ranges, duration: float) -> list[tuple[float, float]] | None:
+    """Turns the user's ranges into the ordered pieces to keep, clamped to
+    the video and with overlaps merged. None means "the whole video" (nothing
+    to cut); an empty selection is an error, not a silent full download."""
+    clean = []
+    for a, b in ranges:
+        a, b = max(0.0, float(a)), min(float(duration), float(b))
+        if b - a >= _CUT_MIN_SECONDS:
+            clean.append([a, b])
+    clean.sort()
+    merged = []
+    for a, b in clean:
+        if merged and a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    if mode == "keep":
+        keep = merged
+    else:
+        keep, cursor = [], 0.0
+        for a, b in merged:
+            if a - cursor >= _CUT_MIN_SECONDS:
+                keep.append([cursor, a])
+            cursor = b
+        if duration - cursor >= _CUT_MIN_SECONDS:
+            keep.append([cursor, float(duration)])
+    if not keep:
+        raise CutFailed("Le découpage ne laisse rien de la vidéo : vérifiez les passages choisis.")
+    if len(keep) == 1 and keep[0][0] < _CUT_MIN_SECONDS and duration - keep[0][1] < _CUT_MIN_SECONDS:
+        return None
+    return [(a, b) for a, b in keep]
+
+
+def _probe_streams(ffprobe: str, path: str) -> tuple[set, float | None]:
+    out = subprocess.run(
+        [ffprobe, "-v", "error", "-show_entries", "stream=codec_type:stream_disposition=attached_pic:format=duration",
+         "-of", "json", path],
+        capture_output=True, text=True, timeout=30,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    ).stdout
+    data = json.loads(out or "{}")
+    kinds = {
+        s.get("codec_type") for s in data.get("streams", [])
+        # A cover picture in an .mp3/.m4a is a "video" stream, not a video.
+        if not (s.get("disposition") or {}).get("attached_pic")
+    }
+    try:
+        duration = float((data.get("format") or {}).get("duration"))
+    except (TypeError, ValueError):
+        duration = None
+    return kinds, duration
+
+
+def _encoder_args(ext: str, has_video: bool, has_audio: bool, cut: dict) -> list[str]:
+    args = []
+    if has_video:
+        vb = cut.get("video_bitrate")
+        if ext == "webm":
+            args += ["-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8", "-row-mt", "1"]
+            args += ["-b:v", f"{vb}k"] if vb else ["-crf", "31", "-b:v", "0"]
+        else:
+            args += ["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p"]
+            args += ["-b:v", f"{vb}k"] if vb else ["-crf", "18"]
+    if has_audio:
+        ab = f"{cut.get('audio_bitrate') or RECOMMENDED_AUDIO_KBPS}k"
+        if ext == "wav":
+            args += ["-c:a", "pcm_s16le"]
+        elif ext in ("webm", "opus", "ogg"):
+            args += ["-c:a", "libopus", "-b:a", ab]
+        elif ext == "mp3":
+            args += ["-c:a", "libmp3lame", "-b:a", ab]
+        else:
+            args += ["-c:a", "aac", "-b:a", ab]
+    if ext in ("mp4", "m4a"):
+        args += ["-movflags", "+faststart"]
+    return args
+
+
+def _cut_file(path: str, cut: dict, duration: float | None, ffmpeg_location: str | None,
+              on_progress, cancel_event=None) -> float | None:
+    """Keeps only the chosen pieces of the downloaded file, in place.
+    Each piece is its own input seeked with -ss (fast, then decoded from the
+    keyframe before it, so the cut is frame-exact) and the pieces are joined
+    with the concat filter: one re-encode, no keyframe-aligned jumps. Returns
+    the new duration, or None when there was nothing to cut."""
+    ffmpeg = str(Path(ffmpeg_location, "ffmpeg.exe")) if ffmpeg_location else "ffmpeg"
+    ffprobe = str(Path(ffmpeg_location, "ffprobe.exe")) if ffmpeg_location else "ffprobe"
+    kinds, real_duration = _probe_streams(ffprobe, path)
+    duration = real_duration or duration
+    if not duration:
+        raise CutFailed("Impossible de découper cette vidéo : sa durée est inconnue.")
+    keep = segments_to_keep(cut["mode"], cut["ranges"], duration)
+    if keep is None:
+        return None
+
+    root, ext = os.path.splitext(path)
+    ext = ext.lstrip(".").lower()
+    has_video = "video" in kinds and ext not in AUDIO_FORMATS
+    has_audio = "audio" in kinds
+    if not (has_video or has_audio):
+        raise CutFailed("Impossible de découper ce fichier : aucune piste audio ou vidéo trouvée.")
+    tmp = f"{root}.cut-temp.{ext}"
+
+    cmd = [ffmpeg, "-hide_banner", "-nostdin", "-y", "-loglevel", "error"]
+    for a, b in keep:
+        cmd += ["-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", path]
+    graph, labels = [], ""
+    for i in range(len(keep)):
+        if has_video:
+            graph.append(f"[{i}:v:0]setpts=PTS-STARTPTS[v{i}]")
+            labels += f"[v{i}]"
+        if has_audio:
+            graph.append(f"[{i}:a:0]asetpts=PTS-STARTPTS[a{i}]")
+            labels += f"[a{i}]"
+    outs = ("[v]" if has_video else "") + ("[a]" if has_audio else "")
+    graph.append(f"{labels}concat=n={len(keep)}:v={int(has_video)}:a={int(has_audio)}{outs}")
+    cmd += ["-filter_complex", ";".join(graph)]
+    if has_video:
+        cmd += ["-map", "[v]"]
+    if has_audio:
+        cmd += ["-map", "[a]"]
+    # Title & co. carry over; chapters would point at the old timeline.
+    cmd += ["-map_metadata", "0", "-map_chapters", "-1"]
+    cmd += _encoder_args(ext, has_video, has_audio, cut)
+    cmd += ["-progress", "pipe:1", "-nostats", tmp]
+
+    total = sum(b - a for a, b in keep)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        encoding="utf-8", errors="replace",
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    errors = []
+    reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
+    reader.start()
+    started = time.monotonic()
+    cancelled = False
+    try:
+        for line in proc.stdout:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                proc.kill()
+                break
+            key, _, value = line.strip().partition("=")
+            if key != "out_time_us":
+                continue
+            try:
+                done = max(0.0, int(value) / 1_000_000)
+            except ValueError:
+                continue
+            frac = min(1.0, done / total) if total else 0.0
+            elapsed = time.monotonic() - started
+            on_progress({
+                "status": "cutting",
+                "progress": frac,
+                "eta": elapsed / frac * (1 - frac) if frac > 0.02 else None,
+            })
+        proc.wait()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        reader.join(timeout=5)
+    if cancelled or (cancel_event is not None and cancel_event.is_set()):
+        _remove_quietly(tmp)
+        raise DownloadCancelled("Téléchargement annulé par l'utilisateur.")
+    if proc.returncode != 0 or not os.path.isfile(tmp):
+        _remove_quietly(tmp)
+        detail = (errors[0] if errors else "").strip().splitlines()
+        raise CutFailed(
+            "Le découpage de la vidéo a échoué."
+            + (f" ({detail[-1][:160]})" if detail else "")
+        )
+    os.replace(tmp, path)
+    return total
+
+
+def _remove_quietly(path: str):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 class _RollingSpeed:
     """Smooths speed/eta over a trailing time window instead of yt-dlp's instantaneous value."""
 
@@ -570,7 +792,7 @@ class _RollingSpeed:
 def download(
     url: str, ydl_opts: dict, on_progress, cancel_event=None,
     cookies_browser_hint: str | None = None, cookies_file: str | None = None,
-    expected_height: int | None = None,
+    expected_height: int | None = None, cut: dict | None = None,
 ) -> dict:
     """`expected_height` is the height the settings screen promised for the
     user's choice (the best available one at or under the picked tier). The
@@ -678,6 +900,17 @@ def download(
                 final_path = merged
     except Exception:
         final_path = None
+    # After a conversion (audio extraction...) yt-dlp records the real file.
+    for candidate in (info.get("filepath"), *[d.get("filepath") for d in info.get("requested_downloads") or []]):
+        if candidate and os.path.isfile(candidate) and (not final_path or not os.path.isfile(final_path)):
+            final_path = candidate
+
+    cut_duration = None
+    if cut and final_path and os.path.isfile(final_path):
+        cut_duration = _cut_file(
+            final_path, cut, info.get("duration"), ydl_opts.get("ffmpeg_location"),
+            on_progress, cancel_event,
+        )
 
     delivered = _selected_video_height(info)
     if expected_height and info.get("extractor_key") == "Youtube":
@@ -695,6 +928,7 @@ def download(
         "description": info.get("description") or "",
         "webpage_url": info.get("webpage_url") or url,
         "filepath": final_path,
+        "cut_duration": cut_duration,
         "delivered_height": delivered,
         "quality_downgraded": bool(
             expected_height and delivered and delivered < expected_height

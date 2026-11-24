@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.53"
+APP_VERSION = "1.54"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,13 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.54",
+        "date": "24 novembre 2026",
+        "bullets": [
+            "Nouveau : découpage des vidéos dans les réglages. Gardez seulement un ou plusieurs extraits (par ex. de 1:30 à 3:00), ou retirez autant de passages que vous voulez (intro, pub…). La coupe est faite à l'image près, avec un aperçu de ce qui sera gardé et la durée finale.",
+        ],
+    },
     {
         "version": "1.53",
         "date": "24 novembre 2026",
