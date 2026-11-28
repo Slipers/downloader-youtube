@@ -232,6 +232,14 @@ class Api:
         return setup if setup.get("enabled") and setup.get("root_dir") else None
 
     @staticmethod
+    def _setup_folder(setup: dict, name: str) -> Path:
+        """The per-video folder. Windows silently drops trailing dots and
+        spaces from a folder name, while yt-dlp turns them into "#": a title
+        ending in "..." gave two different folders, the video in one and
+        everything else looked for in the other. Stripped here, both agree."""
+        return Path(setup["root_dir"]) / (name.rstrip(". ") or "video")
+
+    @staticmethod
     def _write_text_files(setup: dict, folder: Path, base_name: str, result: dict, url: str):
         """One .txt per checked field, or all of them in "<title>.txt" when
         combined. Setups saved before the per-field choice only had "text",
@@ -263,7 +271,7 @@ class Api:
 
         def target(name):
             if setup:
-                return Path(setup["root_dir"]) / name
+                return self._setup_folder(setup, name)
             return downloader.predict_output_path(name, options)
 
         safe = sanitize_filename(title, restricted=False)
@@ -294,6 +302,14 @@ class Api:
         return True
 
     def _run_download(self, url, options, cancel_event):
+        # Last resort: a thread that dies without a word leaves the screen on
+        # "Finalisation" forever, with nothing left to answer "Annuler".
+        try:
+            self._run_download_steps(url, options, cancel_event)
+        except Exception as exc:
+            self._push("download_error", {"error": self._friendly_error(exc, url)})
+
+    def _run_download_steps(self, url, options, cancel_event):
         started = time.monotonic()
         settings = config.load_settings()
         chosen_dir = options.get("dest_dir")
@@ -304,14 +320,17 @@ class Api:
         )
         if setup:
             options.update(
-                dest_dir=str(Path(setup["root_dir"]) / base_name),
+                dest_dir=str(self._setup_folder(setup, base_name)),
                 write_thumbnail=bool(setup.get("thumbnail")),
                 skip_video=not setup.get("video", True),
             )
         # What the folder held before: a cancelled or failed download only
         # ever removes what it added (None: the download creates the folder).
         dest = Path(options["dest_dir"])
-        existing = set(os.listdir(dest)) if dest.is_dir() else None
+        try:
+            existing = set(os.listdir(dest)) if dest.is_dir() else None
+        except OSError:
+            existing = set()  # unreadable: then never delete anything there
         try:
             # The token server may have died since the video was fetched;
             # without it mweb drops to 360p. A single /ping when it's up.
@@ -338,7 +357,12 @@ class Api:
             result["elapsed"] = round(time.monotonic() - started, 1)
             result["folder"] = options["dest_dir"]
             if setup:
-                self._write_text_files(setup, Path(options["dest_dir"]), base_name, result, url)
+                # The video is done: a text file that can't be written must
+                # not turn it into a failure (whose cleanup deletes it).
+                try:
+                    self._write_text_files(setup, Path(options["dest_dir"]), base_name, result, url)
+                except OSError:
+                    pass
             if setup and options.get("skip_video"):
                 result["filepath"] = options["dest_dir"]
             total = settings.get("total_downloads", 0) + 1
@@ -369,9 +393,11 @@ class Api:
         never one that was there before, nor an unrelated file. The
         per-video folder goes too when this download created it and it is
         now empty."""
-        if not dest.is_dir():
-            return
-        for name in os.listdir(dest):
+        try:
+            names = os.listdir(dest) if dest.is_dir() else []
+        except OSError:
+            return  # best effort: never let the cleanup itself fail
+        for name in names:
             if existing is not None and name in existing:
                 continue
             if name.startswith(base_name + "."):

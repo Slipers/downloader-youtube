@@ -825,10 +825,18 @@ def download(
             }
         )
 
+    def pp_hook(d):
+        if cancel_event is not None and cancel_event.is_set():
+            raise DownloadCancelled("Téléchargement annulé par l'utilisateur.")
+
     def make_opts(cookie_extra):
         opts = dict(ydl_opts)
         opts.update(cookie_extra)
         opts["progress_hooks"] = [hook]
+        # Called before and after each post-processing step (merge, metadata,
+        # conversion): "Annuler" during finalisation takes effect at the next
+        # one instead of being ignored until the very end.
+        opts["postprocessor_hooks"] = [pp_hook]
         if throttle["limit"]:
             opts["throttledratelimit"] = throttle["limit"]
         return opts

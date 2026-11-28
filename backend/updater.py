@@ -24,7 +24,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_VERSION = "1.54"
+APP_VERSION = "1.55"
 
 EXE_NAME = "DownloaderYoutube.exe"
 
@@ -33,6 +33,14 @@ EXE_NAME = "DownloaderYoutube.exe"
 # parse markdown -- update this alongside APP_VERSION and the GitHub release
 # notes when publishing.
 CHANGELOG = [
+    {
+        "version": "1.55",
+        "date": "28 novembre 2026",
+        "bullets": [
+            "Corrigé : certains téléchargements restaient bloqués à « Finalisation » sans pouvoir être annulés, notamment les vidéos dont le titre finit par « ... » avec l'organisation des fichiers activée. La vidéo, la miniature et les textes vont maintenant bien dans le même dossier.",
+            "Le bouton « Annuler » fonctionne aussi pendant la finalisation, et l'app affiche toujours un message en cas de problème au lieu de rester bloquée.",
+        ],
+    },
     {
         "version": "1.54",
         "date": "24 novembre 2026",
